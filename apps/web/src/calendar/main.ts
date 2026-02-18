@@ -12,9 +12,6 @@ const state: State = (() => {
   return { y: d.getFullYear(), m0: d.getMonth() };
 })();
 
-function setPill(text: string) {
-  setTextSafe($id("dataPill"), text);
-}
 
 function ymd(y:number,m0:number,d:number){
   const mm = String(m0+1).padStart(2,"0");
@@ -127,19 +124,14 @@ function showDay(
 }
 
 async function loadMarksIfNeeded(year:number){
-  setPill("loading…");
   try {
     const marks = await loadCnHoliday(year);
     state.marks = marks;
 
-    // 展示数据源说明（CN 含调休；农历/节气由前端库生成）
     const src = marks.source === "local" ? "CN（本地自动同步）" : "CN（远程 fallback）";
     const paper = marks.paper ? `｜国务院来源：${marks.paper}` : "";
     setTextSafe($id("sourceLine"), `地区：${src}（含农历/节气/调休）${paper}`);
-
-    setPill("ok");
   } catch (e) {
-    setPill("error");
     setTextSafe($id("sourceLine"), `CN 数据加载失败：${String(e)}`);
   }
 }

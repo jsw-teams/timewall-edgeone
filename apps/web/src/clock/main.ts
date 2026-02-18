@@ -26,9 +26,6 @@ function fmtDate(d: Date) {
   return `${y}-${m}-${day}`;
 }
 
-function setSyncPill(text: string) {
-  setTextSafe($id("syncPill"), text);
-}
 
 async function initProfile() {
   try {
@@ -44,15 +41,13 @@ async function initProfile() {
 }
 
 async function initSync() {
-  setSyncPill("syncing…");
   try {
-    // rounds 减少，避免你现在看到的 now 多次请求（更轻量）
     const s = await syncOnce("/api/now", 3);
     model.applySync(s, true);
-    setSyncPill("synced");
-  } catch {
-    // 同步失败：仍然运行（本地时钟），但提示 offline
-    setSyncPill("offline");
+    // 可选：只在控制台给你看
+    // console.info("[sync] ok rtt=", s.rttMs.toFixed(1), "ms");
+  } catch (e) {
+    // console.warn("[sync] failed:", e);
   }
 }
 
