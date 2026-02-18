@@ -1,125 +1,158 @@
 /* apps/web/src/calendar/calendar.css */
-/* 目标：
-   1) 手机小屏不再出现日历被“横向裁切/偏移”
-   2) 7 列网格在任何分辨率都能收缩（minmax(0,1fr) + min-width:0）
-   3) 小屏自动紧凑：更小 gap / padding / 更低格子高度
+/* 针对你提供的 HTML 结构：
+   - header.topbar
+   - main.stage > section.calCard
+   - .calHead / .monthTitle / .sourceLine / .rightBtns / .btn
+   - #grid.grid (内部有 .headcell + .cell + .dayNum + .subline + .badge)
+   - .dayPanel / .dayTitle / .dayBody
 */
 
 :root{
   --bg: #ffffff;
-  --fg: #111111;
-  --muted: rgba(0,0,0,.56);
-  --border: rgba(0,0,0,.08);
+  --page: #f7f8fa;
+  --fg: #111;
+  --muted: rgba(0,0,0,.58);
+
+  --border: rgba(0,0,0,.10);
   --soft: rgba(0,0,0,.03);
 
-  --radius: 28px;
-  --shadow: 0 10px 28px rgba(0,0,0,.08);
+  --radius: 26px;
+  --shadow: 0 14px 34px rgba(0,0,0,.08);
 
-  --page-pad-x: 16px;
-  --page-pad-y: 18px;
+  --maxw: 1120px;
 
-  --card-pad: 22px;
-  --gap: 12px;
-  --head-h: 44px;
-  --cell-min-h: 92px;
+  --pad-x: 16px;
+  --pad-y: 18px;
 
-  --btn-h: 42px;
+  --card-pad: 18px;
+
+  --gap: 10px;
+  --head-h: 40px;
+  --cell-min-h: 78px;
+
+  --btn-h: 40px;
   --btn-r: 999px;
 }
 
 *{ box-sizing: border-box; }
-html,body{ height:100%; width:100%; }
+html,body{ width:100%; height:100%; }
 body{
   margin:0;
-  background:var(--bg);
-  color:var(--fg);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Noto Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: var(--page);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    "Noto Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   -webkit-text-size-adjust: 100%;
 }
 
-/* ---- 页面容器（尽量不依赖特定 class，兼容你当前结构） ---- */
-#app{
+/* ---------- 顶部栏 ---------- */
+.topbar{
+  position: sticky;
+  top: 0;
+  z-index: 10;
+
+  display: grid;
+  grid-template-columns: 36px 1fr 36px;
+  align-items: center;
+
   width: 100%;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: var(--page-pad-y) var(--page-pad-x) calc(var(--page-pad-y) + env(safe-area-inset-bottom));
+  padding: 10px var(--pad-x);
+
+  background: rgba(255,255,255,.86);
+  backdrop-filter: saturate(180%) blur(10px);
+
+  border-bottom: 1px solid rgba(0,0,0,.06);
 }
 
-/* 标题“日历” */
-h1, .title, .pageTitle{
-  margin: 8px 0 14px;
-  text-align:center;
-  font-weight: 800;
-  letter-spacing: .3px;
+.iconbtn{
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0,0,0,.78);
+  text-decoration: none;
 }
+.iconbtn:active{ transform: translateY(1px); }
 
-/* 如果你有返回按钮容器，避免它撑宽 */
-.topbar, .headerBar{
-  width:100%;
-  max-width:100%;
+.brand{
+  display:flex;
+  align-items:center;
+  justify-content:center;
   min-width:0;
 }
+.brand-title{
+  font-weight: 900;
+  letter-spacing: .2px;
+  font-size: 18px;
+}
 
-/* ---- 卡片（截图里的大圆角白卡） ---- */
-.card, .panel, .sheet, .calendarCard{
+/* ---------- 主体容器 ---------- */
+.stage{
+  width: 100%;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: var(--pad-y) var(--pad-x) calc(var(--pad-y) + env(safe-area-inset-bottom));
+}
+
+/* ---------- 卡片 ---------- */
+.calCard{
   width: 100%;
   max-width: 100%;
   min-width: 0;
+
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+
   padding: var(--card-pad);
-  overflow: hidden; /* 保留圆角裁切阴影内内容，但前提是内部不再溢出 */
 }
 
-/* 如果你的卡片不是上述类名，也没关系：给日历网格的父级一个保险 */
-#grid{
-  max-width: 100%;
-}
-
-/* ---- 顶部：月份标题 + 地区 + 右侧按钮 ---- */
-.toolbar, .bar, .monthBar{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
+/* ---------- 头部：月份/地区/按钮 ---------- */
+.calHead{
+  display: grid;
+  grid-template-columns: var(--btn-h) 1fr auto;
+  align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
-  width:100%;
-  min-width:0;
+
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 14px;
 }
 
-#monthTitle{
-  font-weight: 900;
-  line-height: 1.05;
-  font-size: clamp(28px, 7vw, 44px);
-  margin: 0;
-  padding: 0;
+.monthTitle{
+  font-weight: 950;
+  letter-spacing: .2px;
+  line-height: 1.02;
+  font-size: clamp(28px, 4.2vw, 44px);
 }
-
-#sourceLine{
-  margin-top: 8px;
+.sourceLine{
+  margin-top: 6px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
 }
 
-/* 按钮组 */
-.nav, .navBtns, .actions{
+.rightBtns{
   display:flex;
   align-items:center;
   gap: 10px;
   flex-wrap: wrap;
 }
 
-#prevBtn,#nextBtn,#todayBtn{
+/* 按钮 */
+.btn{
   height: var(--btn-h);
   min-width: var(--btn-h);
   padding: 0 14px;
+
   border-radius: var(--btn-r);
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--fg);
-  font-weight: 700;
+
+  font-weight: 800;
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
@@ -129,175 +162,181 @@ h1, .title, .pageTitle{
   width: var(--btn-h);
   padding: 0;
 }
-#prevBtn:active,#nextBtn:active,#todayBtn:active{
-  transform: translateY(1px);
-}
+.btn:active{ transform: translateY(1px); }
 
-/* ---- 核心：日历网格（修复小屏裁切的关键） ---- */
-#grid{
-  margin-top: 16px;
+/* ---------- 日历网格（关键：任何宽度都不溢出） ---------- */
+.grid{
+  margin-top: 10px;
 
-  /* 强制 7 列可收缩网格，避免固定列宽导致溢出 */
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
-
+  grid-template-columns: repeat(7, minmax(0, 1fr)); /* ✅ 可收缩列 */
   gap: var(--gap);
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
 
-  /* 如果仍然有极端机型溢出，让它可滚动而不是裁切（一般不会触发） */
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-#grid::-webkit-scrollbar{ display:none; }
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 
-.headcell, .cell{
-  min-width: 0 !important;   /* 允许内容收缩 */
-  max-width: 100% !important;
+  overflow-x: hidden; /* ✅ 不做横向滚动，直接自适应 */
 }
 
 /* 星期头 */
 .headcell{
   height: var(--head-h);
+
   display:flex;
   align-items:center;
   justify-content:center;
+
   border-radius: 16px;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(0,0,0,.08);
   background: var(--soft);
-  font-weight: 800;
-  color: rgba(0,0,0,.65);
+
+  font-weight: 900;
+  color: rgba(0,0,0,.62);
+  min-width: 0;
 }
 
-/* 日期格子 */
+/* 日期格 */
 .cell{
   min-height: var(--cell-min-h);
+
   border-radius: 18px;
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border: 1px solid rgba(0,0,0,.08);
+  background: #fff;
+
   padding: 10px 10px 8px;
+
   display:flex;
   flex-direction: column;
-  justify-content: flex-start;
   gap: 8px;
+
+  min-width: 0;
+  overflow: hidden;
   cursor: pointer;
-  overflow: hidden; /* 防止 badge 文字把格子撑出 */
+
+  transition: transform .06s ease;
 }
 .cell:active{ transform: translateY(1px); }
 
-/* 今天高亮 */
+/* 今天 */
 .cell.today{
   outline: 3px solid rgba(0,0,0,.10);
 }
 
 /* 日期数字 */
 .dayNum{
-  font-weight: 900;
+  font-weight: 950;
   font-size: 18px;
   line-height: 1;
 }
 
-/* 角标/农历/节气行 */
+/* 农历/节气/假日标签所在行 */
 .subline{
+  margin-top: auto; /* ✅ 贴底，视觉更稳 */
   min-width: 0;
+
   display:flex;
-  align-items:flex-start;
-  gap: 8px;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+
   color: var(--muted);
   font-size: 12px;
-  line-height: 1.1;
+  line-height: 1.15;
 }
 
-/* 休/班 badge（你现在是竖排样式） */
+/* badge 改为横向 pill（比竖排更适合网格密度） */
 .badge{
   display:inline-flex;
   align-items:center;
   justify-content:center;
 
+  padding: 4px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(0,0,0,.18);
+
+  border: 1px solid rgba(0,0,0,.16);
   background: rgba(0,0,0,.02);
 
-  font-weight: 800;
+  font-weight: 900;
   font-size: 12px;
-  padding: 4px 6px;
+  color: rgba(0,0,0,.78);
 
-  /* 竖排，符合你截图风格 */
-  writing-mode: vertical-rl;
-  text-orientation: upright;
-
-  /* 保险：别让它把格子撑破 */
-  max-height: 56px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .badge.off{
-  border-color: rgba(220, 0, 0, .35);
-  color: rgba(220, 0, 0, .85);
+  border-color: rgba(220, 0, 0, .30);
   background: rgba(220, 0, 0, .04);
+  color: rgba(200, 0, 0, .88);
 }
 .badge.work{
-  border-color: rgba(170, 110, 0, .35);
-  color: rgba(170, 110, 0, .85);
-  background: rgba(170, 110, 0, .04);
+  border-color: rgba(170, 110, 0, .30);
+  background: rgba(170, 110, 0, .06);
+  color: rgba(150, 90, 0, .92);
 }
 
-/* 下方详情区域（选择日期后的说明） */
-.detail, .dayDetail, .infoBox{
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
+/* ---------- 底部详情 ---------- */
+.dayPanel{
   margin-top: 16px;
   padding-top: 14px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid rgba(0,0,0,.08);
 }
 
-#dayTitle{
-  margin: 0 0 6px;
-  font-weight: 900;
+.dayTitle{
+  font-weight: 950;
   font-size: 16px;
+  margin-bottom: 6px;
 }
-#dayBody{
-  margin: 0;
+
+.dayBody{
   color: var(--muted);
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.55;
   white-space: pre-line;
 }
 
-/* ---- 小屏进一步紧凑（关键：避免低分辨率“左右裁切/偏移”） ---- */
-@media (max-width: 420px){
+/* ---------- 移动端：更紧凑，避免低分辨率异常 ---------- */
+@media (max-width: 520px){
   :root{
     --radius: 22px;
     --card-pad: 14px;
     --gap: 8px;
-    --head-h: 38px;
-    --cell-min-h: 72px;
-    --btn-h: 38px;
-    --page-pad-x: 12px;
-    --page-pad-y: 14px;
+    --head-h: 36px;
+    --cell-min-h: 64px;
+    --btn-h: 36px;
+    --pad-x: 12px;
+    --pad-y: 14px;
   }
+
+  .calHead{
+    grid-template-columns: var(--btn-h) 1fr;
+    grid-template-rows: auto auto;
+    align-items: start;
+  }
+
+  /* 把右侧按钮组挪到第二行右侧，避免挤压标题 */
+  .rightBtns{
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+  }
+
+  .monthTitle{ font-size: 30px; }
+  .sourceLine{ font-size: 12px; }
 
   .cell{ padding: 8px 8px 6px; border-radius: 16px; }
   .dayNum{ font-size: 16px; }
   .subline{ font-size: 11px; gap: 6px; }
-
-  .badge{
-    font-size: 11px;
-    padding: 3px 5px;
-    max-height: 48px;
-  }
-
-  #sourceLine{ font-size: 13px; }
+  .badge{ font-size: 11px; padding: 3px 7px; }
 }
 
 @media (max-width: 360px){
   :root{
     --gap: 6px;
-    --cell-min-h: 64px;
+    --cell-min-h: 58px;
   }
-  .headcell{ border-radius: 14px; }
-  .cell{ border-radius: 14px; }
+  .monthTitle{ font-size: 28px; }
 }
