@@ -128,11 +128,11 @@ async function loadMarksIfNeeded(year:number){
     const marks = await loadCnHoliday(year);
     state.marks = marks;
 
-    const src = marks.source === "local" ? "CN（本地自动同步）" : "CN（远程 fallback）";
+    const src = marks.source === "local" ? "中国本地自动同步" : "中国远程获取 ";
     const paper = marks.paper ? `｜国务院来源：${marks.paper}` : "";
-    setTextSafe($id("sourceLine"), `地区：${src}（含农历/节气/调休）${paper}`);
+    setTextSafe($id("sourceLine"), `地区：${src} | ${paper}`);
   } catch (e) {
-    setTextSafe($id("sourceLine"), `CN 数据加载失败：${String(e)}`);
+    setTextSafe($id("sourceLine"), `中国 数据加载失败：${String(e)}`);
   }
 }
 
