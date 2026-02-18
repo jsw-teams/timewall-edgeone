@@ -107,3 +107,6 @@
   font-size: 13px;
   line-height: 1.6;
 }
+.cell.today{
+  outline: 2px solid var(--border);
+}

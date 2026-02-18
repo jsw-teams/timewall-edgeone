@@ -1,44 +1,83 @@
 import "./calendar.css";
 import { $id, setTextSafe } from "../shared/ui";
+import { getGeoCtx } from "../shared/profile";
+import { daysInMonth, dowMonday0, getNowPartsInTZ, getTodayKeyInTZ, ymdStr } from "../shared/tz";
+
 import { loadCnHoliday, HolidayMarks } from "./cn-holidays";
 import { getLunarInfo } from "./lunar";
+import { loadIntlHolidays, IntlHolidayMarks } from "./intl-holidays";
 
 const weekCN = ["一", "二", "三", "四", "五", "六", "日"];
 
-type State = { y: number; m0: number; marks?: HolidayMarks };
+type AnyMarks =
+  | ({ kind: "CN" } & HolidayMarks)
+  | ({ kind: "INTL" } & IntlHolidayMarks);
 
-const state: State = (() => {
-  const d = new Date();
-  return { y: d.getFullYear(), m0: d.getMonth() };
-})();
+type State = {
+  tz: string;
+  country: string;
+  state?: string;
+  mainlandCN: boolean;
 
+  y: number;   // 当前显示年份
+  m1: number;  // 当前显示月份 1..12
 
-function ymd(y:number,m0:number,d:number){
-  const mm = String(m0+1).padStart(2,"0");
-  const dd = String(d).padStart(2,"0");
-  return `${y}-${mm}-${dd}`;
+  todayKey: string; // tz 下的今天 YYYY-MM-DD
+  marks?: AnyMarks;
+};
+
+const state: State = {
+  tz: "UTC",
+  country: "ZZ",
+  y: 2000,
+  m1: 1,
+  todayKey: "2000-01-01",
+  mainlandCN: false,
+};
+
+function sourceText(m: AnyMarks) {
+  if (m.kind === "CN") {
+    const src = m.source === "local" ? "CN（本地同步）" : "CN（远程 fallback）";
+    const paper = (m as any).paper ? `｜国务院来源：${(m as any).paper}` : "";
+    return `地区：${src}（含农历/节气/调休）${paper}`;
+  }
+  // 非 CN：本地计算节假日
+  const area = m.state ? `${m.country}-${m.state}` : m.country;
+  const note = m.note ? `｜${m.note}` : "";
+  return `地区：${area}（时区：${state.tz}）｜节假日：date-holidays（本地计算）${note}`;
 }
 
-function daysInMonth(y:number,m0:number){
-  return new Date(y, m0+1, 0).getDate();
+async function loadMarksForYear(y: number) {
+  if (state.mainlandCN) {
+    const cn = await loadCnHoliday(y);
+    state.marks = { kind: "CN", ...cn } as AnyMarks;
+  } else {
+    const intl = await loadIntlHolidays(y, state.country, state.state);
+    state.marks = { kind: "INTL", ...intl } as AnyMarks;
+  }
+  setTextSafe($id("sourceLine"), sourceText(state.marks!));
 }
 
-function firstDowMonday0(y:number,m0:number){
-  // JS getDay(): Sun=0..Sat=6
-  // 转成 Mon=0..Sun=6
-  const dow = new Date(y, m0, 1).getDay();
-  return (dow + 6) % 7;
-}
+function markForDate(key: string) {
+  if (!state.marks) return null;
 
-function monthLabel(y:number,m0:number){
-  return `${y}年${m0+1}月`;
+  if (state.marks.kind === "CN") {
+    const m = (state.marks as any).map.get(key);
+    if (!m) return null;
+    return m.kind === "work"
+      ? { kind: "work" as const, name: m.name }
+      : { kind: "off" as const, name: m.name };
+  } else {
+    const m = (state.marks as any).map.get(key);
+    if (!m) return null;
+    return { kind: "off" as const, name: m.name };
+  }
 }
 
 function render() {
   const grid = $id("grid");
   grid.innerHTML = "";
 
-  // header row
   for (const w of weekCN) {
     const h = document.createElement("div");
     h.className = "headcell";
@@ -46,15 +85,14 @@ function render() {
     grid.appendChild(h);
   }
 
-  const y = state.y, m0 = state.m0;
-  setTextSafe($id("monthTitle"), monthLabel(y, m0));
+  setTextSafe($id("monthTitle"), `${state.y}年${state.m1}月`);
 
-  const offset = firstDowMonday0(y, m0);
-  const dim = daysInMonth(y, m0);
+  const firstOffset = dowMonday0(state.y, state.m1, 1); // Monday=0..6
+  const dim = daysInMonth(state.y, state.m1);
 
-  // 填充 6 周 * 7 列（42格）
   for (let i = 0; i < 42; i++) {
-    const day = i - offset + 1;
+    const day = i - firstOffset + 1;
+
     const cell = document.createElement("div");
     cell.className = "cell";
 
@@ -65,7 +103,10 @@ function render() {
       continue;
     }
 
-    const dateKey = ymd(y, m0, day);
+    const key = ymdStr(state.y, state.m1, day);
+
+    if (key === state.todayKey) cell.classList.add("today");
+
     const top = document.createElement("div");
     top.className = "dayNum";
     top.textContent = String(day);
@@ -73,93 +114,100 @@ function render() {
     const sub = document.createElement("div");
     sub.className = "subline";
 
-    // 农历/节气
-    const li = getLunarInfo(y, m0+1, day);
-    if (li?.jieqi) {
-      const b = document.createElement("span");
-      b.className = "badge";
-      b.textContent = li.jieqi;
-      sub.appendChild(b);
-    } else if (li?.lunarText) {
-      const t = document.createElement("span");
-      t.textContent = li.lunarText;
-      sub.appendChild(t);
+    // CN 才显示农历/节气
+    if (state.mainlandCN) {
+      const li = getLunarInfo(state.y, state.m1, day);
+      if (li?.jieqi) {
+        const b = document.createElement("span");
+        b.className = "badge";
+        b.textContent = li.jieqi;
+        sub.appendChild(b);
+      } else if (li?.lunarText) {
+        const t = document.createElement("span");
+        t.textContent = li.lunarText;
+        sub.appendChild(t);
+      }
     }
 
-    // 调休/放假
-    const mark = state.marks?.map.get(dateKey);
-    if (mark) {
+    const mk = markForDate(key);
+    if (mk) {
       const b = document.createElement("span");
-      b.className = `badge ${mark.kind === "off" ? "off" : "work"}`;
-      b.textContent = mark.kind === "off" ? `休 ${mark.name}` : `班 ${mark.name}`;
+      if (mk.kind === "work") {
+        b.className = "badge work";
+        b.textContent = `班 ${mk.name}`;
+      } else {
+        b.className = "badge off";
+        b.textContent = `休 ${mk.name}`;
+      }
       sub.appendChild(b);
     }
 
     cell.appendChild(top);
     cell.appendChild(sub);
 
-    cell.addEventListener("click", () => showDay(y, m0, day, dateKey, mark, li));
+    cell.addEventListener("click", () => showDay(key, mk));
     grid.appendChild(cell);
   }
 }
 
-function showDay(
-  y:number, m0:number, day:number,
-  dateKey:string,
-  mark: { kind:"off"|"work"; name:string } | undefined,
-  li: ReturnType<typeof getLunarInfo>
-){
-  const d = new Date(y, m0, day);
-  const week = weekCN[(d.getDay()+6)%7];
-
-  setTextSafe($id("dayTitle"), `${dateKey}（周${week}）`);
+function showDay(key: string, mk: { kind: "off" | "work"; name: string } | null) {
+  setTextSafe($id("dayTitle"), key);
 
   const lines: string[] = [];
-  if (li?.lunarText) lines.push(`农历：${li.lunarText}`);
-  if (li?.jieqi) lines.push(`节气：${li.jieqi}`);
-  if (mark) lines.push(mark.kind === "off" ? `状态：放假（${mark.name}）` : `状态：调休补班（${mark.name}）`);
-
+  if (mk) lines.push(mk.kind === "off" ? `节假日：${mk.name}` : `调休补班：${mk.name}`);
   if (!lines.length) lines.push("（无额外信息）");
+
   setTextSafe($id("dayBody"), lines.join("\n"));
 }
 
-async function loadMarksIfNeeded(year:number){
-  try {
-    const marks = await loadCnHoliday(year);
-    state.marks = marks;
-
-    const src = marks.source === "local" ? "中国本地自动同步" : "中国远程获取 ";
-    const paper = marks.paper ? `｜国务院来源：${marks.paper}` : "";
-    setTextSafe($id("sourceLine"), `地区：${src} | ${paper}`);
-  } catch (e) {
-    setTextSafe($id("sourceLine"), `中国 数据加载失败：${String(e)}`);
-  }
+async function goToday() {
+  const { y, m1 } = getNowPartsInTZ(state.tz);
+  state.y = y;
+  state.m1 = m1;
+  state.todayKey = getTodayKeyInTZ(state.tz);
+  await loadMarksForYear(state.y);
+  render();
 }
 
-function bindNav(){
-  $id("prevBtn").addEventListener("click", async () => {
-    state.m0--;
-    if (state.m0 < 0) { state.m0 = 11; state.y--; }
-    await loadMarksIfNeeded(state.y);
-    render();
-  });
-  $id("nextBtn").addEventListener("click", async () => {
-    state.m0++;
-    if (state.m0 > 11) { state.m0 = 0; state.y++; }
-    await loadMarksIfNeeded(state.y);
-    render();
-  });
-  $id("todayBtn").addEventListener("click", async () => {
-    const d = new Date();
-    state.y = d.getFullYear();
-    state.m0 = d.getMonth();
-    await loadMarksIfNeeded(state.y);
-    render();
-  });
+async function navMonth(delta: number) {
+  let y = state.y;
+  let m1 = state.m1 + delta;
+  if (m1 < 1) {
+    m1 = 12;
+    y -= 1;
+  } else if (m1 > 12) {
+    m1 = 1;
+    y += 1;
+  }
+  state.y = y;
+  state.m1 = m1;
+
+  // 年变化时重新加载该年的节假日
+  await loadMarksForYear(state.y);
+  render();
+}
+
+function bindNav() {
+  $id("prevBtn").addEventListener("click", () => navMonth(-1));
+  $id("nextBtn").addEventListener("click", () => navMonth(+1));
+  $id("todayBtn").addEventListener("click", () => goToday());
 }
 
 (async () => {
   bindNav();
-  await loadMarksIfNeeded(state.y);
+
+  const geo = await getGeoCtx();
+  state.tz = geo.tz;
+  state.country = geo.country;
+  state.state = geo.state;
+  state.mainlandCN = geo.mainlandCN;
+
+  // 关键：按“所在地时区”的今天决定默认月份
+  const now = getNowPartsInTZ(state.tz);
+  state.y = now.y;
+  state.m1 = now.m1;
+  state.todayKey = getTodayKeyInTZ(state.tz);
+
+  await loadMarksForYear(state.y);
   render();
 })();

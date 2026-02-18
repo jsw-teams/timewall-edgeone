@@ -1,8 +1,6 @@
 name: Sync CN Holidays
 
 on:
-  schedule:
-    - cron: "20 2 * * *"   # 每天 02:20 UTC
   workflow_dispatch:
 
 permissions:
