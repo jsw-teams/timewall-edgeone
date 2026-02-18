@@ -1,0 +1,7 @@
+node_modules
+dist
+.DS_Store
+
+apps/web/node_modules
+apps/web/dist
+apps/web/.vite
