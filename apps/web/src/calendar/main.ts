@@ -22,6 +22,7 @@ function ymdStr(y: number, m1: number, d: number) {
   const dd = String(d).padStart(2, "0");
   return `${y}-${mm}-${dd}`;
 }
+
 function getNowPartsInTZ(tz: string) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: tz,
@@ -36,10 +37,12 @@ function getNowPartsInTZ(tz: string) {
   const d = Number(m.day);
   return { y, m1: mo, d };
 }
+
 function getTodayKeyInTZ(tz: string) {
   const { y, m1, d } = getNowPartsInTZ(tz);
   return ymdStr(y, m1, d);
 }
+
 // Monday=0..Sunday=6
 function dowMonday0(y: number, m1: number, d: number) {
   const t = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
@@ -55,6 +58,7 @@ function dowMonday0(y: number, m1: number, d: number) {
     7;
   return (dowSun0 + 6) % 7;
 }
+
 function daysInMonth(y: number, m1: number) {
   return new Date(y, m1, 0).getDate();
 }
@@ -69,11 +73,6 @@ type AnyMarks =
 
 const weekCN = ["一", "二", "三", "四", "五", "六", "日"];
 
-function isMobileView() {
-  // 你也可以按自己 CSS 断点调整
-  return window.matchMedia("(max-width: 520px)").matches;
-}
-
 const state = {
   tz: "UTC",
   area: "ZZ", // 顶部显示：地区：$area
@@ -82,15 +81,13 @@ const state = {
   y: 2000,
   m1: 1,
   todayKey: "2000-01-01",
+  selectedKey: "2000-01-01",
 
   // 用于 intl 分支
   country: "ZZ",
   sub: undefined as string | undefined,
 
   marks: null as AnyMarks | null,
-
-  // ✅ 新增：移动端模式（网格只显示“班/休”）
-  mobile: false,
 };
 
 function setSourceLine() {
@@ -103,7 +100,6 @@ async function loadMarksForYear(year: number) {
     // ✅ CN 内地：本地同步的 CN 数据（含调休）
     const cn: any = await loadCnHoliday(year);
 
-    // 兼容 cn-holidays.ts 返回结构：只要 cn.map 是 Map<YYYY-MM-DD, {kind,name}>
     state.marks = {
       kind: "CN",
       map: cn.map as Map<string, CNMark>,
@@ -126,37 +122,53 @@ function markForDate(key: string): { kind: "work" | "off"; name: string } | null
   return { kind: m.kind, name: m.name };
 }
 
+function isMobile() {
+  return window.matchMedia("(max-width: 560px)").matches;
+}
+
+function updateSelectedCell(key: string) {
+  const grid = $id("grid");
+  const prev = grid.querySelector(".cell.selected") as HTMLElement | null;
+  if (prev) prev.classList.remove("selected");
+
+  const next = grid.querySelector(`.cell[data-key="${key}"]`) as HTMLElement | null;
+  if (next) next.classList.add("selected");
+}
+
 function showDay(key: string) {
+  state.selectedKey = key;
+  updateSelectedCell(key);
+
   const mk = markForDate(key);
 
   setTextSafe($id("dayTitle"), key);
 
   const lines: string[] = [];
 
-  // 农历/节气（所有地区都显示在详情里）
+  // 农历/节气（所有地区）
   const y = Number(key.slice(0, 4));
   const m1 = Number(key.slice(5, 7));
   const d = Number(key.slice(8, 10));
   const li = getLunarInfo(y, m1, d);
 
-  if (li?.lunarText) lines.push(`农历：${li.lunarText}`);
   if (li?.jieqi) lines.push(`节气：${li.jieqi}`);
+  if (li?.lunarText) lines.push(`农历：${li.lunarText}`);
 
-  // 班休详情（完整名称，解决“文字多显示不全”）
+  // 班/休（含名称）
   if (mk) {
-    if (mk.kind === "work") {
-      lines.push(`班休：班（调休补班）`);
-      lines.push(`名称：${mk.name}`);
-    } else {
-      lines.push(`班休：休（节假日）`);
-      lines.push(`名称：${mk.name}`);
-    }
+    if (mk.kind === "work") lines.push(`补班：${mk.name}`);
+    else lines.push(`休假：${mk.name}`);
   } else {
-    lines.push(`班休：无`);
+    lines.push("班休：无");
   }
 
-  if (!lines.length) lines.push("（无额外信息）");
   setTextSafe($id("dayBody"), lines.join("\n"));
+
+  // 移动端：点完日期把详情面板滚到可见位置（体验更直观）
+  if (isMobile()) {
+    const panel = document.querySelector(".dayPanel") as HTMLElement | null;
+    panel?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 }
 
 function render() {
@@ -184,15 +196,16 @@ function render() {
 
     if (day < 1 || day > dim) {
       cell.classList.add("empty");
-      cell.setAttribute("aria-hidden", "true");
       grid.appendChild(cell);
       continue;
     }
 
     const key = ymdStr(state.y, state.m1, day);
-    if (key === state.todayKey) cell.classList.add("today");
+    cell.dataset.key = key;
 
-    // 顶部日期数字
+    if (key === state.todayKey) cell.classList.add("today");
+    if (key === state.selectedKey) cell.classList.add("selected");
+
     const top = document.createElement("div");
     top.className = "dayNum";
     top.textContent = String(day);
@@ -200,44 +213,37 @@ function render() {
     const sub = document.createElement("div");
     sub.className = "subline";
 
-    // ✅ 移动端：网格不显示农历/节气（只在详情里显示）
-    if (!state.mobile) {
-      const li = getLunarInfo(state.y, state.m1, day);
-      if (li?.jieqi) {
-        const b = document.createElement("span");
-        b.className = "badge meta";
-        b.textContent = li.jieqi;
-        sub.appendChild(b);
-      } else if (li?.lunarText) {
-        const t = document.createElement("span");
-        t.className = "metaText";
-        t.textContent = li.lunarText;
-        sub.appendChild(t);
-      }
+    // ✅ 格子里的信息策略：
+    // - 桌面：可显示农历/节气 + 班休
+    // - 移动：只显示“班/休”标记（名称放到下方详情）
+    const mk = markForDate(key);
+    const li = getLunarInfo(state.y, state.m1, day);
+
+    // 农历/节气（用 CSS 在移动端隐藏）
+    if (li?.jieqi || li?.lunarText) {
+      const lunar = document.createElement("span");
+      lunar.className = "lunar";
+      lunar.textContent = li.jieqi ? li.jieqi : li.lunarText!;
+      sub.appendChild(lunar);
     }
 
-    // 节假日 / 调休（移动端只显示“班/休”，详情里显示完整名称）
-    const mk = markForDate(key);
+    // 班/休 badge（移动端只显示“班/休”，桌面显示“班/休 + 名称”）
     if (mk) {
       const b = document.createElement("span");
-      if (mk.kind === "work") {
-        b.className = "badge work mark";
-        b.textContent = state.mobile ? "班" : `班 ${mk.name}`;
-      } else {
-        b.className = "badge off mark";
-        b.textContent = state.mobile ? "休" : `休 ${mk.name}`;
-      }
-      // 桌面 hover 可看全称；移动端也不影响
+      b.className = `badge ${mk.kind === "work" ? "work" : "off"}`;
       b.title = mk.name;
-      sub.appendChild(b);
 
-      // 让可访问性更稳
-      cell.setAttribute(
-        "aria-label",
-        `${key}，${mk.kind === "work" ? "补班" : "休假"}：${mk.name}`
-      );
-    } else {
-      cell.setAttribute("aria-label", key);
+      const kSpan = document.createElement("span");
+      kSpan.className = "k";
+      kSpan.textContent = mk.kind === "work" ? "班" : "休";
+
+      const nSpan = document.createElement("span");
+      nSpan.className = "n";
+      nSpan.textContent = ` ${mk.name}`;
+
+      b.appendChild(kSpan);
+      b.appendChild(nSpan);
+      sub.appendChild(b);
     }
 
     cell.appendChild(top);
@@ -246,6 +252,9 @@ function render() {
     cell.addEventListener("click", () => showDay(key));
     grid.appendChild(cell);
   }
+
+  // 渲染完，确保选中态正确
+  updateSelectedCell(state.selectedKey);
 }
 
 async function goToday() {
@@ -253,6 +262,7 @@ async function goToday() {
   state.y = now.y;
   state.m1 = now.m1;
   state.todayKey = getTodayKeyInTZ(state.tz);
+  state.selectedKey = state.todayKey;
 
   await loadMarksForYear(state.y);
   render();
@@ -279,38 +289,19 @@ async function navMonth(delta: number) {
   // 年变化时加载新年的节假日
   if (yearChanged) await loadMarksForYear(state.y);
 
+  // 切换月份后：默认选中“当月今天”（如果今天不在此月，则选中 1 号）
+  const today = getNowPartsInTZ(state.tz);
+  const inThisMonth = today.y === state.y && today.m1 === state.m1;
+  state.selectedKey = inThisMonth ? getTodayKeyInTZ(state.tz) : ymdStr(state.y, state.m1, 1);
+
   render();
+  showDay(state.selectedKey);
 }
 
 function bindNav() {
   $id("prevBtn").addEventListener("click", () => navMonth(-1));
   $id("nextBtn").addEventListener("click", () => navMonth(+1));
   $id("todayBtn").addEventListener("click", () => goToday());
-}
-
-function bindResponsive() {
-  // ✅ 当从横屏/竖屏切换导致断点跨越时，重渲染
-  const mq = window.matchMedia("(max-width: 520px)");
-  const onChange = () => {
-    const m = mq.matches;
-    if (m !== state.mobile) {
-      state.mobile = m;
-      render();
-      // 不打断用户：保持当前 dayPanel 内容；若为空则补一次 today
-      const title = ($id("dayTitle").textContent || "").trim();
-      if (!title || title === "选择一个日期") showDay(state.todayKey);
-    }
-  };
-
-  // 兼容不同浏览器实现
-  if ("addEventListener" in mq) {
-    mq.addEventListener("change", onChange);
-  } else {
-    (mq as any).addListener?.(onChange);
-  }
-
-  // 兜底：某些环境不触发 change，就用 resize 兜底
-  window.addEventListener("resize", onChange, { passive: true });
 }
 
 (async () => {
@@ -326,17 +317,15 @@ function bindResponsive() {
   state.country = geo.country;
   state.sub = geo.state;
 
-  state.mobile = isMobileView();
-  bindResponsive();
-
   const now = getNowPartsInTZ(state.tz);
   state.y = now.y;
   state.m1 = now.m1;
   state.todayKey = getTodayKeyInTZ(state.tz);
+  state.selectedKey = state.todayKey;
 
   await loadMarksForYear(state.y);
   render();
 
-  // 默认展示今天详情（移动端也能立刻看到农历/班休明细）
+  // 默认展示今天详情
   showDay(state.todayKey);
 })();
