@@ -1,75 +1,44 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>TimeWall</title>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TimeWall</title>
 
-    <!-- 预留：你后续替换 favicon.ico -->
-    <link rel="icon" href="/favicon.ico" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/site.webmanifest" />
+  <!-- 预留：你后续自己设计 -->
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-    <meta name="description" content="EdgeOne Pages: 类 time.is 的时间与日历（含农历/节气/节假日）" />
-  </head>
-  <body>
-    <div id="app">
-      <header class="topbar">
-        <div class="brand">
-          <div class="brand-title">TimeWall</div>
-          <div class="brand-sub" id="brandSub">Loading…</div>
-        </div>
-
-        <div class="pill" id="pillNet" aria-live="polite">sync: --</div>
-      </header>
-
-      <main class="grid">
-        <section class="card" aria-labelledby="clockTitle">
-          <h2 id="clockTitle">时间</h2>
-
-          <div class="clock">
-            <div class="clock-time" id="clockTime">--:--:--</div>
-            <div class="clock-ms" id="clockMs">.---</div>
-          </div>
-
-          <div class="clock-meta" id="clockMeta">
-            <div>日期：<span id="clockDate">--</span></div>
-            <div>时区：<span id="clockTz">--</span></div>
-            <div>与边缘对时偏移：<span id="clockOffset">--</span></div>
-            <div>估计 RTT：<span id="clockRtt">--</span></div>
-          </div>
-
-          <div class="row">
-            <button class="btn" id="btnResync" type="button">重新对时</button>
-            <button class="btn" id="btnToggle24h" type="button">切换 24h/12h</button>
-          </div>
-        </section>
-
-        <section class="card" aria-labelledby="calTitle">
-          <div class="cal-head">
-            <h2 id="calTitle">日历</h2>
-            <div class="row">
-              <button class="btn" id="btnPrev" type="button" aria-label="上个月">‹</button>
-              <button class="btn" id="btnToday" type="button">今天</button>
-              <button class="btn" id="btnNext" type="button" aria-label="下个月">›</button>
-            </div>
-          </div>
-
-          <div id="calMeta" class="muted">--</div>
-          <div id="calendar" class="calendar" aria-live="polite"></div>
-
-          <div class="daypanel" id="dayPanel" hidden>
-            <div class="daypanel-title" id="dayTitle">--</div>
-            <div class="daypanel-body" id="dayBody">--</div>
-          </div>
-        </section>
-      </main>
-
-      <footer class="footer">
-        <span class="muted">Powered by EdgeOne Pages + Edge Functions</span>
-      </footer>
+  <meta name="color-scheme" content="light dark" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-title">TimeWall</div>
+      <div id="syncPill" class="pill" aria-live="polite">syncing…</div>
     </div>
 
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+    <nav class="nav">
+      <a class="iconbtn" href="/calendar/" aria-label="打开日历" title="日历">
+        <!-- 小图标入口：内联 SVG，后续你也可以换成自己的图标 -->
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path fill="currentColor" d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1Zm12 8H5v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9ZM6 6a1 1 0 0 0-1 1v1h14V7a1 1 0 0 0-1-1H6Z"/>
+        </svg>
+      </a>
+    </nav>
+  </header>
+
+  <main class="stage">
+    <section class="clockCard">
+      <div id="bigTime" class="bigTime" aria-label="当前时间">--:--:--</div>
+      <div class="metaRow">
+        <div id="bigDate" class="metaText">----</!--!--</div>
+        <div id="tzText" class="metaText"></div>
+        <div id="locText" class="metaText"></div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/src/clock/main.ts"></script>
+</body>
 </html>

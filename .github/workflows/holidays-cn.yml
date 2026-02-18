@@ -1,0 +1,37 @@
+name: Sync CN Holidays
+
+on:
+  schedule:
+    - cron: "20 2 * * *"   # 每天 02:20 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Pull holiday data
+        run: node scripts/pull-holidays-cn.mjs
+
+      - name: Commit changes
+        run: |
+          git status --porcelain
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git add apps/web/public/data/holidays/CN
+            git commit -m "chore(holidays): sync CN data"
+            git push
+          else
+            echo "No changes to commit."
+          fi

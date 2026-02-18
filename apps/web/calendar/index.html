@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>日历 - TimeWall</title>
+
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="iconbtn" href="/" aria-label="返回时钟" title="返回">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path fill="currentColor" d="M15.5 5.5a1 1 0 0 1 0 1.4L11.4 11l4.1 4.1a1 1 0 1 1-1.4 1.4l-4.8-4.8a1 1 0 0 1 0-1.4l4.8-4.8a1 1 0 0 1 1.4 0Z"/>
+      </svg>
+    </a>
+    <div class="brand">
+      <div class="brand-title">日历</div>
+      <div id="dataPill" class="pill" aria-live="polite">loading…</div>
+    </div>
+    <div style="width:36px"></div>
+  </header>
+
+  <main class="stage">
+    <section class="calCard">
+      <div class="calHead">
+        <button id="prevBtn" class="btn" type="button" aria-label="上个月">‹</button>
+        <div>
+          <div id="monthTitle" class="monthTitle">----</年--月</div>
+          <div id="sourceLine" class="sourceLine"></div>
+        </div>
+        <div class="rightBtns">
+          <button id="todayBtn" class="btn" type="button">今天</button>
+          <button id="nextBtn" class="btn" type="button" aria-label="下个月">›</button>
+        </div>
+      </div>
+
+      <div id="grid" class="grid" aria-label="日历"></div>
+
+      <div class="dayPanel">
+        <div id="dayTitle" class="dayTitle">选择一个日期</div>
+        <div id="dayBody" class="dayBody"></div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/src/calendar/main.ts"></script>
+</body>
+</html>

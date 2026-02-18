@@ -1,0 +1,109 @@
+@import "../clock/clock.css";
+
+.calCard{
+  width:min(1100px, 100%);
+  border:1px solid var(--border);
+  background: var(--card);
+  border-radius: 24px;
+  padding: 20px;
+}
+
+.calHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding: 8px 6px 16px;
+}
+.monthTitle{
+  font-weight: 900;
+  font-size: 20px;
+  letter-spacing:.2px;
+}
+.sourceLine{
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.btn{
+  border:1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  border-radius: 14px;
+  padding: 8px 12px;
+  cursor:pointer;
+}
+.btn:hover{ filter: brightness(1.05); }
+.rightBtns{ display:flex; gap:10px; }
+
+.grid{
+  display:grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  padding: 10px 6px 6px;
+}
+
+.cell, .headcell{
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 10px 12px;
+  min-height: 68px;
+  background: rgba(0,0,0,.02);
+}
+@media (prefers-color-scheme: dark){
+  .cell, .headcell{ background: rgba(255,255,255,.04); }
+}
+
+.headcell{
+  min-height: 44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:800;
+  color: var(--muted);
+  padding: 10px 0;
+}
+
+.cell{
+  cursor:pointer;
+  position:relative;
+}
+.cell:hover{ outline: 2px solid var(--border); }
+
+.dayNum{
+  font-weight:900;
+  font-variant-numeric: tabular-nums;
+}
+.subline{
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.badge{
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+.badge.off{ color: #b00020; border-color: rgba(176,0,32,.35); }
+.badge.work{ color: #a15c00; border-color: rgba(161,92,0,.35); }
+
+.dayPanel{
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+  padding: 16px 6px 6px;
+}
+.dayTitle{
+  font-weight: 900;
+}
+.dayBody{
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
