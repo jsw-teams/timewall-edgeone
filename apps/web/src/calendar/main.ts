@@ -16,13 +16,19 @@ function setTextSafe(el: HTMLElement, text: string) {
   el.textContent = text ?? "";
 }
 
-// --- 时区工具：不依赖其它文件，避免兼容问题 ---
+// --- 时区工具 ---
 function ymdStr(y: number, m1: number, d: number) {
   const mm = String(m1).padStart(2, "0");
   const dd = String(d).padStart(2, "0");
   return `${y}-${mm}-${dd}`;
 }
-
+function parseKey(key: string) {
+  return {
+    y: Number(key.slice(0, 4)),
+    m1: Number(key.slice(5, 7)),
+    d: Number(key.slice(8, 10)),
+  };
+}
 function getNowPartsInTZ(tz: string) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: tz,
@@ -30,19 +36,13 @@ function getNowPartsInTZ(tz: string) {
     month: "2-digit",
     day: "2-digit",
   }).formatToParts(new Date());
-
   const m = Object.fromEntries(parts.map((p) => [p.type, p.value]));
-  const y = Number(m.year);
-  const mo = Number(m.month);
-  const d = Number(m.day);
-  return { y, m1: mo, d };
+  return { y: Number(m.year), m1: Number(m.month), d: Number(m.day) };
 }
-
 function getTodayKeyInTZ(tz: string) {
   const { y, m1, d } = getNowPartsInTZ(tz);
   return ymdStr(y, m1, d);
 }
-
 // Monday=0..Sunday=6
 function dowMonday0(y: number, m1: number, d: number) {
   const t = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
@@ -58,15 +58,18 @@ function dowMonday0(y: number, m1: number, d: number) {
     7;
   return (dowSun0 + 6) % 7;
 }
-
 function daysInMonth(y: number, m1: number) {
   return new Date(y, m1, 0).getDate();
 }
+// 用 UTC 加减天，避免 DST 干扰（用于键盘导航）
+function addDaysUTC(y: number, m1: number, d: number, delta: number) {
+  const dt = new Date(Date.UTC(y, m1 - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + delta);
+  return { y: dt.getUTCFullYear(), m1: dt.getUTCMonth() + 1, d: dt.getUTCDate() };
+}
 
-// --- 数据结构（尽量宽松，避免和你现有 cn-holidays.ts 不匹配） ---
 type CNMark = { kind: "work" | "off"; name: string };
 type IntlMark = { kind: "off"; name: string };
-
 type AnyMarks =
   | { kind: "CN"; map: Map<string, CNMark>; source?: string; paper?: string }
   | { kind: "INTL"; map: Map<string, IntlMark>; note?: string };
@@ -75,7 +78,7 @@ const weekCN = ["一", "二", "三", "四", "五", "六", "日"];
 
 const state = {
   tz: "UTC",
-  area: "ZZ", // 顶部显示：地区：$area
+  area: "ZZ",
   mainlandCN: false,
 
   y: 2000,
@@ -83,23 +86,24 @@ const state = {
   todayKey: "2000-01-01",
   selectedKey: "2000-01-01",
 
-  // 用于 intl 分支
   country: "ZZ",
   sub: undefined as string | undefined,
 
   marks: null as AnyMarks | null,
 };
 
+function isMobile() {
+  return window.matchMedia("(max-width: 560px)").matches;
+}
+
 function setSourceLine() {
-  // ✅ 你要求：只显示“地区：$地区”
+  // ✅ 只显示“地区：XX”
   setTextSafe($id("sourceLine"), `地区：${state.area}`);
 }
 
 async function loadMarksForYear(year: number) {
   if (state.mainlandCN) {
-    // ✅ CN 内地：本地同步的 CN 数据（含调休）
     const cn: any = await loadCnHoliday(year);
-
     state.marks = {
       kind: "CN",
       map: cn.map as Map<string, CNMark>,
@@ -107,11 +111,9 @@ async function loadMarksForYear(year: number) {
       paper: cn.paper,
     };
   } else {
-    // 非内地：date-holidays 本地计算
     const intl = await loadIntlHolidays(year, state.country, state.sub);
     state.marks = { kind: "INTL", map: intl.map, note: intl.note };
   }
-
   setSourceLine();
 }
 
@@ -122,63 +124,83 @@ function markForDate(key: string): { kind: "work" | "off"; name: string } | null
   return { kind: m.kind, name: m.name };
 }
 
-function isMobile() {
-  return window.matchMedia("(max-width: 560px)").matches;
+function weekdayLabel(y: number, m1: number, d: number) {
+  return weekCN[dowMonday0(y, m1, d)];
 }
 
-function updateSelectedCell(key: string) {
+function updateSelectedCell(nextKey: string, focus = false) {
   const grid = $id("grid");
-  const prev = grid.querySelector(".cell.selected") as HTMLElement | null;
-  if (prev) prev.classList.remove("selected");
 
-  const next = grid.querySelector(`.cell[data-key="${key}"]`) as HTMLElement | null;
-  if (next) next.classList.add("selected");
+  const prev = grid.querySelector(`.cell.selected`) as HTMLElement | null;
+  if (prev) {
+    prev.classList.remove("selected");
+    prev.setAttribute("aria-selected", "false");
+  }
+
+  const next = grid.querySelector(`.cell[data-key="${nextKey}"]`) as HTMLElement | null;
+  if (next) {
+    next.classList.add("selected");
+    next.setAttribute("aria-selected", "true");
+    if (focus) (next as HTMLButtonElement).focus();
+  }
 }
 
-function showDay(key: string) {
+function showDay(key: string, fromKeyboard = false) {
   state.selectedKey = key;
-  updateSelectedCell(key);
+  updateSelectedCell(key, fromKeyboard);
 
+  const { y, m1, d } = parseKey(key);
   const mk = markForDate(key);
+  const li = getLunarInfo(y, m1, d);
 
   setTextSafe($id("dayTitle"), key);
 
   const lines: string[] = [];
-
-  // 农历/节气（所有地区）
-  const y = Number(key.slice(0, 4));
-  const m1 = Number(key.slice(5, 7));
-  const d = Number(key.slice(8, 10));
-  const li = getLunarInfo(y, m1, d);
-
   if (li?.jieqi) lines.push(`节气：${li.jieqi}`);
   if (li?.lunarText) lines.push(`农历：${li.lunarText}`);
 
-  // 班/休（含名称）
   if (mk) {
-    if (mk.kind === "work") lines.push(`补班：${mk.name}`);
-    else lines.push(`休假：${mk.name}`);
+    lines.push(mk.kind === "work" ? `补班：${mk.name}` : `休假：${mk.name}`);
   } else {
     lines.push("班休：无");
   }
 
   setTextSafe($id("dayBody"), lines.join("\n"));
 
-  // 移动端：点完日期把详情面板滚到可见位置（体验更直观）
   if (isMobile()) {
     const panel = document.querySelector(".dayPanel") as HTMLElement | null;
     panel?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 }
 
+function buildCellAriaLabel(key: string) {
+  const { y, m1, d } = parseKey(key);
+  const wk = weekdayLabel(y, m1, d);
+
+  const mk = markForDate(key);
+  const li = getLunarInfo(y, m1, d);
+
+  const parts: string[] = [];
+  parts.push(`${key} 星期${wk}`);
+
+  if (li?.jieqi) parts.push(`节气 ${li.jieqi}`);
+  if (li?.lunarText) parts.push(`农历 ${li.lunarText}`);
+
+  if (mk) parts.push(mk.kind === "work" ? `补班 ${mk.name}` : `休假 ${mk.name}`);
+  else parts.push("无班休信息");
+
+  return parts.join("，");
+}
+
 function render() {
   const grid = $id("grid");
   grid.innerHTML = "";
 
-  // week header
+  // 周标题行
   for (const w of weekCN) {
     const h = document.createElement("div");
     h.className = "headcell";
+    h.setAttribute("role", "columnheader");
     h.textContent = w;
     grid.appendChild(h);
   }
@@ -188,24 +210,45 @@ function render() {
   const firstOffset = dowMonday0(state.y, state.m1, 1);
   const dim = daysInMonth(state.y, state.m1);
 
+  // 确保 selectedKey 在本月，否则落到 1 号
+  {
+    const sk = parseKey(state.selectedKey);
+    const inMonth = sk.y === state.y && sk.m1 === state.m1 && sk.d >= 1 && sk.d <= dim;
+    if (!inMonth) state.selectedKey = ymdStr(state.y, state.m1, 1);
+  }
+
   for (let i = 0; i < 42; i++) {
     const day = i - firstOffset + 1;
 
-    const cell = document.createElement("div");
-    cell.className = "cell";
-
+    // 空白格
     if (day < 1 || day > dim) {
-      cell.classList.add("empty");
-      grid.appendChild(cell);
+      const empty = document.createElement("div");
+      empty.className = "cell empty";
+      empty.setAttribute("aria-hidden", "true");
+      grid.appendChild(empty);
       continue;
     }
 
     const key = ymdStr(state.y, state.m1, day);
+
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "cell";
     cell.dataset.key = key;
 
-    if (key === state.todayKey) cell.classList.add("today");
-    if (key === state.selectedKey) cell.classList.add("selected");
+    cell.setAttribute("role", "gridcell");
+    cell.setAttribute("aria-label", buildCellAriaLabel(key));
+    cell.setAttribute("aria-selected", key === state.selectedKey ? "true" : "false");
 
+    if (key === state.todayKey) {
+      cell.classList.add("today");
+      cell.setAttribute("aria-current", "date");
+    }
+    if (key === state.selectedKey) {
+      cell.classList.add("selected");
+    }
+
+    // 数字
     const top = document.createElement("div");
     top.className = "dayNum";
     top.textContent = String(day);
@@ -213,13 +256,8 @@ function render() {
     const sub = document.createElement("div");
     sub.className = "subline";
 
-    // ✅ 格子里的信息策略：
-    // - 桌面：可显示农历/节气 + 班休
-    // - 移动：只显示“班/休”标记（名称放到下方详情）
-    const mk = markForDate(key);
+    // 桌面：可展示农历/节气（移动端 CSS 会隐藏）
     const li = getLunarInfo(state.y, state.m1, day);
-
-    // 农历/节气（用 CSS 在移动端隐藏）
     if (li?.jieqi || li?.lunarText) {
       const lunar = document.createElement("span");
       lunar.className = "lunar";
@@ -227,7 +265,8 @@ function render() {
       sub.appendChild(lunar);
     }
 
-    // 班/休 badge（移动端只显示“班/休”，桌面显示“班/休 + 名称”）
+    // 班/休 badge：移动端只显示“班/休”，名称 CSS 隐藏
+    const mk = markForDate(key);
     if (mk) {
       const b = document.createElement("span");
       b.className = `badge ${mk.kind === "work" ? "work" : "off"}`;
@@ -250,11 +289,53 @@ function render() {
     cell.appendChild(sub);
 
     cell.addEventListener("click", () => showDay(key));
+    cell.addEventListener("keydown", (e) => onCellKeyDown(e, key));
+
     grid.appendChild(cell);
   }
 
-  // 渲染完，确保选中态正确
-  updateSelectedCell(state.selectedKey);
+  updateSelectedCell(state.selectedKey, false);
+}
+
+async function ensureMonthVisibleAndSelect(nextKey: string, focus = true) {
+  const { y, m1 } = parseKey(nextKey);
+  const yearChanged = y !== state.y;
+
+  if (y !== state.y || m1 !== state.m1) {
+    state.y = y;
+    state.m1 = m1;
+
+    if (yearChanged) await loadMarksForYear(state.y);
+    render();
+  }
+
+  showDay(nextKey, focus);
+}
+
+function onCellKeyDown(e: KeyboardEvent, key: string) {
+  // Enter/Space：选择并显示详情
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    showDay(key, true);
+    return;
+  }
+
+  // 箭头：移动选中日期（跨月自动切换）
+  let delta = 0;
+  if (e.key === "ArrowLeft") delta = -1;
+  else if (e.key === "ArrowRight") delta = 1;
+  else if (e.key === "ArrowUp") delta = -7;
+  else if (e.key === "ArrowDown") delta = 7;
+  else return;
+
+  e.preventDefault();
+
+  const { y, m1, d } = parseKey(key);
+  const next = addDaysUTC(y, m1, d, delta);
+  const nextKey = ymdStr(next.y, next.m1, next.d);
+
+  // 异步跨月/跨年
+  void ensureMonthVisibleAndSelect(nextKey, true);
 }
 
 async function goToday() {
@@ -266,36 +347,28 @@ async function goToday() {
 
   await loadMarksForYear(state.y);
   render();
-  showDay(state.todayKey);
+  showDay(state.todayKey, false);
 }
 
 async function navMonth(delta: number) {
   let y = state.y;
   let m1 = state.m1 + delta;
 
-  if (m1 < 1) {
-    m1 = 12;
-    y -= 1;
-  } else if (m1 > 12) {
-    m1 = 1;
-    y += 1;
-  }
+  if (m1 < 1) { m1 = 12; y -= 1; }
+  else if (m1 > 12) { m1 = 1; y += 1; }
 
   const yearChanged = y !== state.y;
 
   state.y = y;
   state.m1 = m1;
 
-  // 年变化时加载新年的节假日
   if (yearChanged) await loadMarksForYear(state.y);
 
-  // 切换月份后：默认选中“当月今天”（如果今天不在此月，则选中 1 号）
-  const today = getNowPartsInTZ(state.tz);
-  const inThisMonth = today.y === state.y && today.m1 === state.m1;
-  state.selectedKey = inThisMonth ? getTodayKeyInTZ(state.tz) : ymdStr(state.y, state.m1, 1);
+  // 切月默认选中 1 号（不会“跳到很远的今天”造成迷惑）
+  state.selectedKey = ymdStr(state.y, state.m1, 1);
 
   render();
-  showDay(state.selectedKey);
+  showDay(state.selectedKey, false);
 }
 
 function bindNav() {
@@ -310,10 +383,9 @@ function bindNav() {
   const geo = await getGeoCtx();
 
   state.tz = geo.tz;
-  state.area = geo.displayArea; // ✅ 顶部“地区：XX”
+  state.area = geo.displayArea;
   state.mainlandCN = geo.mainlandCN;
 
-  // intl 分支需要 country/sub；CN 内地也存一份不影响
   state.country = geo.country;
   state.sub = geo.state;
 
@@ -325,7 +397,5 @@ function bindNav() {
 
   await loadMarksForYear(state.y);
   render();
-
-  // 默认展示今天详情
-  showDay(state.todayKey);
+  showDay(state.todayKey, false);
 })();
