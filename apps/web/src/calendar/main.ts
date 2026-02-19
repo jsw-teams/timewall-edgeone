@@ -6,7 +6,6 @@ import { loadCnHoliday } from "./cn-holidays";
 import { loadIntlHolidays } from "./intl-holidays";
 import { getLunarInfo } from "./lunar";
 
-// --- 超轻 UI 工具：避免依赖兼容问题 ---
 function $id(id: string): HTMLElement {
   const el = document.getElementById(id);
   if (!el) throw new Error(`Missing element #${id}`);
@@ -16,7 +15,6 @@ function setTextSafe(el: HTMLElement, text: string) {
   el.textContent = text ?? "";
 }
 
-// --- 时区工具 ---
 function ymdStr(y: number, m1: number, d: number) {
   const mm = String(m1).padStart(2, "0");
   const dd = String(d).padStart(2, "0");
@@ -61,7 +59,7 @@ function dowMonday0(y: number, m1: number, d: number) {
 function daysInMonth(y: number, m1: number) {
   return new Date(y, m1, 0).getDate();
 }
-// 用 UTC 加减天，避免 DST 干扰（用于键盘导航）
+// 用 UTC 加减天，避免 DST 干扰（键盘导航）
 function addDaysUTC(y: number, m1: number, d: number, delta: number) {
   const dt = new Date(Date.UTC(y, m1 - 1, d));
   dt.setUTCDate(dt.getUTCDate() + delta);
@@ -97,7 +95,6 @@ function isMobile() {
 }
 
 function setSourceLine() {
-  // ✅ 只显示“地区：XX”
   setTextSafe($id("sourceLine"), `地区：${state.area}`);
 }
 
@@ -130,13 +127,11 @@ function weekdayLabel(y: number, m1: number, d: number) {
 
 function updateSelectedCell(nextKey: string, focus = false) {
   const grid = $id("grid");
-
   const prev = grid.querySelector(`.cell.selected`) as HTMLElement | null;
   if (prev) {
     prev.classList.remove("selected");
     prev.setAttribute("aria-selected", "false");
   }
-
   const next = grid.querySelector(`.cell[data-key="${nextKey}"]`) as HTMLElement | null;
   if (next) {
     next.classList.add("selected");
@@ -156,6 +151,8 @@ function showDay(key: string, fromKeyboard = false) {
   setTextSafe($id("dayTitle"), key);
 
   const lines: string[] = [];
+  lines.push(`星期：${weekdayLabel(y, m1, d)}`);
+
   if (li?.jieqi) lines.push(`节气：${li.jieqi}`);
   if (li?.lunarText) lines.push(`农历：${li.lunarText}`);
 
@@ -182,14 +179,47 @@ function buildCellAriaLabel(key: string) {
 
   const parts: string[] = [];
   parts.push(`${key} 星期${wk}`);
-
   if (li?.jieqi) parts.push(`节气 ${li.jieqi}`);
   if (li?.lunarText) parts.push(`农历 ${li.lunarText}`);
-
   if (mk) parts.push(mk.kind === "work" ? `补班 ${mk.name}` : `休假 ${mk.name}`);
   else parts.push("无班休信息");
-
   return parts.join("，");
+}
+
+async function ensureMonthVisibleAndSelect(nextKey: string, focus = true) {
+  const { y, m1 } = parseKey(nextKey);
+  const yearChanged = y !== state.y;
+
+  if (y !== state.y || m1 !== state.m1) {
+    state.y = y;
+    state.m1 = m1;
+    if (yearChanged) await loadMarksForYear(state.y);
+    render();
+  }
+
+  showDay(nextKey, focus);
+}
+
+function onCellKeyDown(e: KeyboardEvent, key: string) {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    showDay(key, true);
+    return;
+  }
+
+  let delta = 0;
+  if (e.key === "ArrowLeft") delta = -1;
+  else if (e.key === "ArrowRight") delta = 1;
+  else if (e.key === "ArrowUp") delta = -7;
+  else if (e.key === "ArrowDown") delta = 7;
+  else return;
+
+  e.preventDefault();
+
+  const { y, m1, d } = parseKey(key);
+  const next = addDaysUTC(y, m1, d, delta);
+  const nextKey = ymdStr(next.y, next.m1, next.d);
+  void ensureMonthVisibleAndSelect(nextKey, true);
 }
 
 function render() {
@@ -210,7 +240,7 @@ function render() {
   const firstOffset = dowMonday0(state.y, state.m1, 1);
   const dim = daysInMonth(state.y, state.m1);
 
-  // 确保 selectedKey 在本月，否则落到 1 号
+  // 选中日期不在本月：落到 1 号
   {
     const sk = parseKey(state.selectedKey);
     const inMonth = sk.y === state.y && sk.m1 === state.m1 && sk.d >= 1 && sk.d <= dim;
@@ -220,7 +250,6 @@ function render() {
   for (let i = 0; i < 42; i++) {
     const day = i - firstOffset + 1;
 
-    // 空白格
     if (day < 1 || day > dim) {
       const empty = document.createElement("div");
       empty.className = "cell empty";
@@ -244,11 +273,8 @@ function render() {
       cell.classList.add("today");
       cell.setAttribute("aria-current", "date");
     }
-    if (key === state.selectedKey) {
-      cell.classList.add("selected");
-    }
+    if (key === state.selectedKey) cell.classList.add("selected");
 
-    // 数字
     const top = document.createElement("div");
     top.className = "dayNum";
     top.textContent = String(day);
@@ -256,7 +282,7 @@ function render() {
     const sub = document.createElement("div");
     sub.className = "subline";
 
-    // 桌面：可展示农历/节气（移动端 CSS 会隐藏）
+    // 桌面显示农历/节气；移动端 CSS 会隐藏
     const li = getLunarInfo(state.y, state.m1, day);
     if (li?.jieqi || li?.lunarText) {
       const lunar = document.createElement("span");
@@ -265,7 +291,7 @@ function render() {
       sub.appendChild(lunar);
     }
 
-    // 班/休 badge：移动端只显示“班/休”，名称 CSS 隐藏
+    // 班/休：移动端只显示“班/休”，名称隐藏
     const mk = markForDate(key);
     if (mk) {
       const b = document.createElement("span");
@@ -297,47 +323,6 @@ function render() {
   updateSelectedCell(state.selectedKey, false);
 }
 
-async function ensureMonthVisibleAndSelect(nextKey: string, focus = true) {
-  const { y, m1 } = parseKey(nextKey);
-  const yearChanged = y !== state.y;
-
-  if (y !== state.y || m1 !== state.m1) {
-    state.y = y;
-    state.m1 = m1;
-
-    if (yearChanged) await loadMarksForYear(state.y);
-    render();
-  }
-
-  showDay(nextKey, focus);
-}
-
-function onCellKeyDown(e: KeyboardEvent, key: string) {
-  // Enter/Space：选择并显示详情
-  if (e.key === "Enter" || e.key === " ") {
-    e.preventDefault();
-    showDay(key, true);
-    return;
-  }
-
-  // 箭头：移动选中日期（跨月自动切换）
-  let delta = 0;
-  if (e.key === "ArrowLeft") delta = -1;
-  else if (e.key === "ArrowRight") delta = 1;
-  else if (e.key === "ArrowUp") delta = -7;
-  else if (e.key === "ArrowDown") delta = 7;
-  else return;
-
-  e.preventDefault();
-
-  const { y, m1, d } = parseKey(key);
-  const next = addDaysUTC(y, m1, d, delta);
-  const nextKey = ymdStr(next.y, next.m1, next.d);
-
-  // 异步跨月/跨年
-  void ensureMonthVisibleAndSelect(nextKey, true);
-}
-
 async function goToday() {
   const now = getNowPartsInTZ(state.tz);
   state.y = now.y;
@@ -358,15 +343,12 @@ async function navMonth(delta: number) {
   else if (m1 > 12) { m1 = 1; y += 1; }
 
   const yearChanged = y !== state.y;
-
   state.y = y;
   state.m1 = m1;
 
   if (yearChanged) await loadMarksForYear(state.y);
 
-  // 切月默认选中 1 号（不会“跳到很远的今天”造成迷惑）
   state.selectedKey = ymdStr(state.y, state.m1, 1);
-
   render();
   showDay(state.selectedKey, false);
 }

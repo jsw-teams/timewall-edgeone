@@ -1,134 +1,99 @@
 /* apps/web/src/calendar/calendar.css */
 
 :root{
-  --bg: #ffffff;
-  --panel: #f7f7f7;
-  --card: #ffffff;
-  --ink: #111;
-  --muted: rgba(0,0,0,.62);
-  --line: rgba(0,0,0,.10);
-  --line-strong: rgba(0,0,0,.22);
-  --shadow: 0 10px 40px rgba(0,0,0,.07);
+  --bg:#fff;
+  --ink:#111;
+  --muted:rgba(0,0,0,.62);
+  --line:rgba(0,0,0,.10);
+  --line-strong:rgba(0,0,0,.22);
 
-  --r: 22px;
-  --gap: clamp(8px, 1.2vw, 12px);
-  --cell-h: clamp(64px, 9vw, 96px);
+  --topbar-h:56px;
+  --gap: clamp(8px, 1vw, 12px);
+
+  /* 让网格尽量“一屏装下”：
+     可视高度 = 100dvh - topbar - head(约) - padding(约) - gaps(约)
+     然后平分到 6 行日期 */
+  --cell-h: clamp(56px, calc((100dvh - var(--topbar-h) - 86px - 48px) / 7.2), 110px);
 }
 
-*{ box-sizing: border-box; }
-html, body{ height: 100%; }
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
 body{
-  margin: 0;
+  margin:0;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Arial, sans-serif;
   color: var(--ink);
   background: var(--bg);
 }
 
-/* 跳过导航 */
 .skiplink{
-  position: absolute;
-  left: -9999px;
-  top: 8px;
-  padding: 10px 12px;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  z-index: 999;
+  position:absolute; left:-9999px; top:8px;
+  padding:10px 12px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:999px;
+  z-index:999;
 }
-.skiplink:focus{
-  left: 10px;
-}
+.skiplink:focus{ left:10px; }
 
-/* 顶栏（对齐时钟页） */
 .topbar{
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 56px;
-  padding: 0 16px;
+  position:sticky; top:0; z-index:20;
+  display:flex; align-items:center; justify-content:space-between;
+  height: var(--topbar-h);
+  padding:0 16px;
   background: rgba(255,255,255,.90);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--line);
+  border-bottom:1px solid var(--line);
 }
 
-.brand{
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.brand-name{
-  font-weight: 900;
-  letter-spacing: .2px;
-}
-.brand-sub{
-  font-size: 12px;
-  color: var(--muted);
-}
+.brand{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.brand-name{ font-weight:900; letter-spacing:.2px; }
+.brand-sub{ font-size:12px; color:var(--muted); }
 
 .iconbtn{
-  width: 40px;
-  height: 40px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: #fff;
-  color: var(--ink);
-  text-decoration: none;
+  width:40px; height:40px;
+  display:inline-flex; align-items:center; justify-content:center;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:#fff;
+  color:var(--ink);
+  text-decoration:none;
 }
-.iconbtn:focus-visible{
-  outline: 3px solid rgba(0,0,0,.35);
-  outline-offset: 2px;
-}
+.iconbtn:focus-visible{ outline:3px solid rgba(0,0,0,.35); outline-offset:2px; }
 
-/* 舞台：和时钟页一致（居中卡片） */
+/* ✅ stage：占满可视高度，减少留白 */
 .stage{
-  padding: clamp(12px, 2vw, 18px);
-}
-
-.card{
-  width: min(1180px, 100%);
+  padding: clamp(10px, 1.2vw, 16px);
+  height: calc(100dvh - var(--topbar-h));
+  display:flex;
+  flex-direction:column;
+  gap: 10px;
+  max-width: 1400px;
   margin: 0 auto;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--r);
-  box-shadow: var(--shadow);
-  padding: clamp(12px, 1.8vw, 18px);
+  width: 100%;
 }
 
-/* 卡片头 */
-.cardhead{
-  display: grid;
+/* 头部控制条：全宽 */
+.calHead{
+  display:grid;
   grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 12px;
-  padding-bottom: 10px;
+  align-items:center;
+  gap: 10px;
 }
 
-.titleblock{
-  min-width: 0;
-}
-
+.titleblock{ min-width:0; }
 .monthTitle{
-  margin: 0;
-  font-size: clamp(28px, 4.4vw, 44px);
-  line-height: 1.05;
+  margin:0;
+  font-size: clamp(26px, 3.6vw, 44px);
+  line-height:1.05;
   font-weight: 950;
-  letter-spacing: .2px;
+  letter-spacing:.2px;
 }
-
 .sourceLine{
-  margin-top: 6px;
+  margin-top: 4px;
   font-size: 14px;
   color: var(--muted);
 }
 
-/* 按钮 */
 .btn{
   height: 38px;
   padding: 0 14px;
@@ -136,32 +101,36 @@ body{
   border: 1px solid var(--line);
   background: #fff;
   color: var(--ink);
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
 }
 .btn.icon{
   width: 38px;
-  padding: 0;
+  padding:0;
   font-size: 18px;
-  font-weight: 900;
+  font-weight: 950;
 }
-.headactions{
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
+.headactions{ display:flex; align-items:center; gap:10px; }
 .btn:hover{ border-color: var(--line-strong); }
-.btn:focus-visible{
-  outline: 3px solid rgba(0,0,0,.35);
-  outline-offset: 2px;
+.btn:focus-visible{ outline: 3px solid rgba(0,0,0,.35); outline-offset:2px; }
+
+/* ✅ 主体：桌面两列（左网格 + 右详情），尽量一屏 */
+.calBody{
+  flex: 1;
+  min-height: 0;
+  display:grid;
+  grid-template-columns: 1fr minmax(260px, 320px);
+  gap: 12px;
+  align-items: stretch;
 }
 
-/* 网格 */
+/* 日历网格 */
 .grid{
-  display: grid;
+  min-height: 0;
+  display:grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: var(--gap);
-  padding-top: 6px;
+  align-content: start;
 }
 
 /* 周标题 */
@@ -169,7 +138,7 @@ body{
   height: 34px;
   border-radius: 14px;
   border: 1px solid var(--line);
-  background: #fff;
+  background:#fff;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -180,107 +149,104 @@ body{
 /* 日期格（button） */
 .cell{
   min-height: var(--cell-h);
-  width: 100%;
-  border-radius: 18px;
+  width:100%;
+  border-radius: 16px;
   border: 1px solid var(--line);
-  background: #fff;
+  background:#fff;
   padding: 10px;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
+  text-align:left;
+  display:flex;
+  flex-direction:column;
   gap: 8px;
-  cursor: pointer;
-  transition: border-color .15s ease, box-shadow .15s ease;
+  cursor:pointer;
 }
 .cell:hover{ border-color: var(--line-strong); }
-.cell:focus-visible{
-  outline: 3px solid rgba(0,0,0,.35);
-  outline-offset: 2px;
-}
+.cell:focus-visible{ outline: 3px solid rgba(0,0,0,.35); outline-offset:2px; }
 
-/* 空白格 */
 .cell.empty{
-  opacity: .26;
-  cursor: default;
+  opacity:.22;
+  cursor:default;
 }
-.cell.empty:focus{ outline: none; }
-
-/* 今日 vs 选中 */
 .cell.today{
   box-shadow: inset 0 0 0 2px rgba(0,0,0,.10);
 }
 .cell.selected{
-  box-shadow:
-    inset 0 0 0 2px rgba(0,0,0,.48),
-    0 8px 20px rgba(0,0,0,.09);
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,.48);
   border-color: rgba(0,0,0,.20);
 }
 
-.dayNum{
-  font-size: 18px;
-  font-weight: 950;
-}
+.dayNum{ font-size: 18px; font-weight: 950; }
 
-/* 第二行：桌面可放少量信息；移动端会隐藏一部分 */
+/* 第二行：默认显示农历/节气 + 班休（桌面可见） */
 .subline{
-  display: flex;
-  flex-wrap: wrap;
+  display:flex;
+  flex-wrap:wrap;
   gap: 8px;
-  align-items: center;
+  align-items:center;
   min-height: 18px;
   color: rgba(0,0,0,.70);
   font-size: 12px;
 }
 
-.lunar{
-  color: rgba(0,0,0,.60);
-}
+.lunar{ color: rgba(0,0,0,.60); white-space:nowrap; }
 
 .badge{
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  display:inline-flex;
+  align-items:center;
   padding: 2px 10px;
   border-radius: 999px;
   border: 1px solid rgba(0,0,0,.14);
-  background: #fff;
-  line-height: 18px;
-  white-space: nowrap;
+  background:#fff;
+  line-height:18px;
+  white-space:nowrap;
 }
 .badge .k{ font-weight: 950; }
 .badge .n{ color: rgba(0,0,0,.70); }
 
-.badge.off{ border-color: rgba(220, 0, 0, .22); }
-.badge.work{ border-color: rgba(0, 0, 0, .18); }
+.badge.off{ border-color: rgba(220,0,0,.22); }
+.badge.work{ border-color: rgba(0,0,0,.18); }
 
-/* 详情区 */
+/* ✅ 详情区：固定在右侧，不挤网格 */
 .dayPanel{
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px;
+  overflow:auto;
+  background:#fff;
 }
-.dayTitle{
-  font-weight: 950;
-  font-size: 16px;
-}
+.dayTitle{ font-weight:950; font-size: 16px; }
 .dayBody{
   margin-top: 8px;
-  color: rgba(0,0,0,.80);
+  color: rgba(0,0,0,.82);
   font-size: 14px;
   line-height: 1.65;
   white-space: pre-line;
 }
 
-/* 移动端：格子里只保留“班/休”，农历/长名称移到下方详情 */
-@media (max-width: 560px){
-  .topbar{ padding: 0 12px; }
-  .card{ padding: 12px; border-radius: 20px; }
-  .cell{ padding: 8px; border-radius: 16px; }
-  .lunar{ display: none; }
-  .badge .n{ display: none; } /* 只显示“班/休” */
+/* ✅ 中等宽度：仍然两列但缩窄详情 */
+@media (max-width: 980px){
+  .calBody{ grid-template-columns: 1fr minmax(240px, 280px); }
 }
 
-/* 减少动画：无障碍偏好 */
+/* ✅ 移动端：单列，详情在下方；格子更紧凑，只显示“班/休” */
+@media (max-width: 560px){
+  .topbar{ padding:0 12px; }
+  .stage{ padding: 10px; }
+  .calBody{
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+  }
+  .dayPanel{
+    border-radius: 14px;
+    max-height: 36dvh;
+  }
+  .cell{ padding: 8px; border-radius: 14px; }
+  .lunar{ display:none; }
+  .badge .n{ display:none; } /* 只显示“班/休” */
+}
+
+/* 无障碍：减少动画 */
 @media (prefers-reduced-motion: reduce){
-  .cell{ transition: none; }
+  .cell{ transition:none; }
 }

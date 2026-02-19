@@ -9,43 +9,39 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 </head>
 <body>
-  <!-- 跳过导航：读屏/键盘友好 -->
   <a class="skiplink" href="#main">跳到内容</a>
 
-  <!-- 顶栏：对齐时钟页（左侧品牌，右侧图标按钮） -->
   <header class="topbar" role="banner">
     <div class="brand" aria-label="TimeWall 日历">
       <div class="brand-name">TimeWall</div>
       <div class="brand-sub">日历</div>
     </div>
 
-    <!-- 右侧：返回时钟（与你时钟页右上角“去日历”的按钮对称） -->
     <a class="iconbtn" href="/" aria-label="返回时钟" title="返回时钟">
-      <!-- clock icon -->
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
         <path fill="currentColor" d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 .001-16.001A8 8 0 0 1 12 20Zm.75-13a1 1 0 0 0-2 0v5c0 .265.105.52.293.707l3 3a1 1 0 1 0 1.414-1.414l-2.707-2.707V7Z"/>
       </svg>
     </a>
   </header>
 
-  <main id="main" class="stage" role="main">
-    <section class="card" aria-label="日历卡片">
-      <!-- 卡片头：月份标题 + 导航 -->
-      <div class="cardhead">
-        <button id="prevBtn" class="btn icon" type="button" aria-label="上个月">‹</button>
+  <main id="main" class="stage" role="main" aria-label="日历页面">
+    <!-- 头部控制条（全宽） -->
+    <section class="calHead" aria-label="月份与导航">
+      <button id="prevBtn" class="btn icon" type="button" aria-label="上个月">‹</button>
 
-        <div class="titleblock">
-          <h1 id="monthTitle" class="monthTitle">0000年00月</h1>
-          <div id="sourceLine" class="sourceLine"></div>
-        </div>
-
-        <div class="headactions">
-          <button id="todayBtn" class="btn" type="button">今天</button>
-          <button id="nextBtn" class="btn icon" type="button" aria-label="下个月">›</button>
-        </div>
+      <div class="titleblock">
+        <h1 id="monthTitle" class="monthTitle">0000年00月</h1>
+        <div id="sourceLine" class="sourceLine"></div>
       </div>
 
-      <!-- 日历网格：role=grid 便于读屏理解；键盘箭头也支持 -->
+      <div class="headactions">
+        <button id="todayBtn" class="btn" type="button">今天</button>
+        <button id="nextBtn" class="btn icon" type="button" aria-label="下个月">›</button>
+      </div>
+    </section>
+
+    <!-- 日历网格（全宽，尽量一屏） -->
+    <section class="calBody" aria-label="日历主体">
       <div id="grid"
            class="grid"
            role="grid"
@@ -54,7 +50,7 @@
            aria-label="月份日历">
       </div>
 
-      <!-- 详情区：读屏友好（内容变化会播报） -->
+      <!-- 详情区：桌面右侧/底部自适应；移动端在下方 -->
       <section class="dayPanel" aria-live="polite" aria-atomic="true">
         <div id="dayTitle" class="dayTitle">选择一个日期</div>
         <div id="dayBody" class="dayBody"></div>
