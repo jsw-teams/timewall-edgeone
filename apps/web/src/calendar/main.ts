@@ -90,10 +90,6 @@ const state = {
   marks: null as AnyMarks | null,
 };
 
-function isMobile() {
-  return window.matchMedia("(max-width: 560px)").matches;
-}
-
 function setSourceLine() {
   setTextSafe($id("sourceLine"), `地区：${state.area}`);
 }
@@ -127,11 +123,8 @@ function weekdayLabel(y: number, m1: number, d: number) {
 
 function getDayCells(): HTMLButtonElement[] {
   const grid = $id("grid");
-  // grid 里先有 7 个 headcell，再有 42 个 button.cell
   const btns = Array.from(grid.querySelectorAll("button.cell")) as HTMLButtonElement[];
-  if (btns.length !== 42) {
-    throw new Error(`Expected 42 day cells, got ${btns.length}`);
-  }
+  if (btns.length !== 42) throw new Error(`Expected 42 day cells, got ${btns.length}`);
   return btns;
 }
 
@@ -150,39 +143,14 @@ function buildCellAriaLabel(key: string) {
   if (li?.jieqi) parts.push(`节气 ${li.jieqi}`);
   if (li?.lunarText) parts.push(`农历 ${li.lunarText}`);
   if (mk) parts.push(mk.kind === "work" ? `补班 ${mk.name}` : `休假 ${mk.name}`);
-  else parts.push("无班休信息");
+  else parts.push("班休 无");
   return parts.join("，");
 }
 
 function setDetailsPlaceholder(key: string) {
   setTextSafe($id("dayTitle"), key);
-  setTextSafe($id("dayBody"), "农历：—\n班休：—");
-}
-
-function showDay(key: string, fromKeyboard = false) {
-  state.selectedKey = key;
-  updateSelectedCell(key, fromKeyboard);
-
-  const { y, m1, d } = parseKey(key);
-  const wk = weekdayLabel(y, m1, d);
-
-  const mk = markForDate(key);
-  const li = getLunarInfo(y, m1, d);
-
-  setTextSafe($id("dayTitle"), key);
-
-  // ✅ 两行固定格式：农历一行 + 班休一行（不再忽长忽短导致偏移）
-  const lunarLine = `农历：${li?.jieqi ? li.jieqi : (li?.lunarText ?? "—")}`;
-  const planLine = mk
-    ? (mk.kind === "work" ? `班休：班（${mk.name}）` : `班休：休（${mk.name}）`)
-    : "班休：—";
-
-  setTextSafe($id("dayBody"), `星期：${wk}\n${lunarLine}\n${planLine}`);
-
-  if (isMobile()) {
-    const panel = document.querySelector(".dayPanel") as HTMLElement | null;
-    panel?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+  // ✅ 默认“班休：无”
+  setTextSafe($id("dayBody"), "星期：—\n农历：—\n班休：无");
 }
 
 function updateSelectedCell(nextKey: string, focus = false) {
@@ -235,6 +203,28 @@ function onCellKeyDown(e: KeyboardEvent, key: string) {
   void ensureMonthVisibleAndSelect(nextKey, true);
 }
 
+function showDay(key: string, fromKeyboard = false) {
+  state.selectedKey = key;
+  updateSelectedCell(key, fromKeyboard);
+
+  const { y, m1, d } = parseKey(key);
+  const wk = weekdayLabel(y, m1, d);
+
+  const mk = markForDate(key);
+  const li = getLunarInfo(y, m1, d);
+
+  setTextSafe($id("dayTitle"), key);
+
+  const lunarLine = `农历：${li?.jieqi ? li.jieqi : (li?.lunarText ?? "—")}`;
+
+  // ✅ 无班休 -> 班休：无
+  const planLine = mk
+    ? (mk.kind === "work" ? `班休：班（${mk.name}）` : `班休：休（${mk.name}）`)
+    : "班休：无";
+
+  setTextSafe($id("dayBody"), `星期：${wk}\n${lunarLine}\n${planLine}`);
+}
+
 function renderIntoSkeleton() {
   setTextSafe($id("monthTitle"), `${state.y}年${state.m1}月`);
   setSourceLine();
@@ -253,7 +243,6 @@ function renderIntoSkeleton() {
   for (let i = 0; i < 42; i++) {
     const btn = cells[i];
 
-    // 重置
     btn.classList.remove("today", "selected", "skel");
     btn.removeAttribute("aria-current");
     btn.removeAttribute("data-key");
@@ -266,13 +255,14 @@ function renderIntoSkeleton() {
     const sub = btn.querySelector(".subline") as HTMLElement | null;
     if (!dayNum || !sub) continue;
 
+    clearSubline(sub);
+
     if (day < 1 || day > dim) {
       dayNum.innerHTML = "&nbsp;";
-      clearSubline(sub);
-      // 留两条 ghost 保持高度
-      const g1 = document.createElement("span"); g1.className = "ghost";
-      const g2 = document.createElement("span"); g2.className = "ghost";
-      sub.appendChild(g1); sub.appendChild(g2);
+      // ✅ 空格子：只放透明 ghost 占位，不出现灰条
+      const g = document.createElement("span");
+      g.className = "ghost";
+      sub.appendChild(g);
       continue;
     }
 
@@ -282,9 +272,7 @@ function renderIntoSkeleton() {
 
     dayNum.textContent = String(day);
 
-    clearSubline(sub);
-
-    // 农历/节气（桌面显示，移动端会被 CSS 隐藏）
+    // 农历/节气（短文本）
     const li = getLunarInfo(state.y, state.m1, day);
     if (li?.jieqi || li?.lunarText) {
       const lunar = document.createElement("span");
@@ -292,18 +280,17 @@ function renderIntoSkeleton() {
       lunar.textContent = li.jieqi ? li.jieqi : li.lunarText!;
       sub.appendChild(lunar);
     } else {
-      // 也占一点位
       const g = document.createElement("span");
       g.className = "ghost";
       sub.appendChild(g);
     }
 
-    // 班/休 badge（移动端只显示“班/休”，名称隐藏由 CSS 控制）
+    // ✅ 班/休：永远只显示“班/休”，不显示长名称
     const mk = markForDate(key);
     if (mk) {
       const b = document.createElement("span");
       b.className = `badge ${mk.kind === "work" ? "work" : "off"}`;
-      b.title = mk.name;
+      b.title = mk.name; // 鼠标悬停可看
 
       const kSpan = document.createElement("span");
       kSpan.className = "k";
@@ -311,12 +298,13 @@ function renderIntoSkeleton() {
 
       const nSpan = document.createElement("span");
       nSpan.className = "n";
-      nSpan.textContent = ` ${mk.name}`;
+      nSpan.textContent = ` ${mk.name}`; // 被 CSS 隐藏，但保留可读性/未来可开
 
       b.appendChild(kSpan);
       b.appendChild(nSpan);
       sub.appendChild(b);
     } else {
+      // ✅ 没有班休：不显示 badge，只占位（透明）
       const g = document.createElement("span");
       g.className = "ghost";
       sub.appendChild(g);
@@ -326,16 +314,12 @@ function renderIntoSkeleton() {
     btn.setAttribute("aria-label", buildCellAriaLabel(key));
     btn.setAttribute("aria-selected", key === state.selectedKey ? "true" : "false");
 
-    // 今日 / 选中
     if (key === state.todayKey) {
       btn.classList.add("today");
       btn.setAttribute("aria-current", "date");
     }
-    if (key === state.selectedKey) {
-      btn.classList.add("selected");
-    }
+    if (key === state.selectedKey) btn.classList.add("selected");
 
-    // 事件（先移除旧的，再绑一次，避免重复）
     btn.onclick = () => showDay(key, false);
     btn.onkeydown = (e) => onCellKeyDown(e as KeyboardEvent, key);
   }
@@ -384,7 +368,7 @@ function bindNav() {
 (async () => {
   bindNav();
 
-  // ✅ 先用浏览器时区做“快速骨架渲染”，避免空白与偏移
+  // 先快速骨架：不空白、不偏移
   state.tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   {
     const now = getNowPartsInTZ(state.tz);
@@ -398,7 +382,7 @@ function bindNav() {
     renderIntoSkeleton();
   }
 
-  // ✅ 再异步拉真实地区/时区与节假日数据，回来后填充
+  // 再加载 geo + 假期数据
   const geo = await getGeoCtx();
 
   state.tz = geo.tz;

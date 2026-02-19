@@ -7,7 +7,9 @@
 
   --topbar-h:56px;
   --gap: clamp(8px, 1vw, 12px);
-  --cell-h: clamp(56px, calc((100dvh - var(--topbar-h) - 86px - 48px) / 7.2), 110px);
+
+  /* 让桌面尽量不下拉：格子随视口自适应 */
+  --cell-h: clamp(56px, calc((100dvh - var(--topbar-h) - 92px - 20px) / 6.6), 110px);
 }
 
 *{ box-sizing:border-box; }
@@ -92,9 +94,9 @@ body{
   border-radius: 999px;
   border: 1px solid var(--line);
   background: #fff;
-  color: var(--ink);
+  color:var(--ink);
   font-weight: 800;
-  cursor: pointer;
+  cursor:pointer;
 }
 .btn.icon{
   width: 38px;
@@ -110,7 +112,7 @@ body{
   flex: 1;
   min-height: 0;
   display:grid;
-  grid-template-columns: 1fr minmax(260px, 320px);
+  grid-template-columns: 1fr minmax(260px, 360px);
   gap: 12px;
   align-items: stretch;
 }
@@ -165,24 +167,35 @@ body{
   flex-wrap:wrap;
   gap: 8px;
   align-items:center;
+
+  /* ✅ 不要灰底条：完全透明 */
+  background: transparent;
+  border: 0;
+  padding: 0;
   min-height: 18px;
+
   color: rgba(0,0,0,.70);
   font-size: 12px;
 }
 
-/* ✅ 两条占位条：加载前后高度一致 */
+/* ✅ ghost 改为透明占位，只负责“占高度”，不画灰底 */
 .ghost{
   display:inline-block;
   height: 14px;
-  width: 64px;
+  width: 56px;
   border-radius: 999px;
-  border: 1px solid rgba(0,0,0,.10);
-  background: rgba(0,0,0,.04);
+  background: transparent;
+  border: 0;
 }
+
 .cell.skel .dayNum{ opacity:.25; }
 
-.lunar{ color: rgba(0,0,0,.60); white-space:nowrap; }
+.lunar{
+  color: rgba(0,0,0,.60);
+  white-space:nowrap;
+}
 
+/* ✅ 班/休 badge：永远只显示“班/休”，不显示长名称（桌面也如此） */
 .badge{
   display:inline-flex;
   align-items:center;
@@ -194,7 +207,7 @@ body{
   white-space:nowrap;
 }
 .badge .k{ font-weight: 950; }
-.badge .n{ color: rgba(0,0,0,.70); }
+.badge .n{ display:none; } /* ✅ 永久隐藏长名称，避免溢出 */
 .badge.off{ border-color: rgba(220,0,0,.22); }
 .badge.work{ border-color: rgba(0,0,0,.18); }
 
@@ -216,7 +229,7 @@ body{
 }
 
 @media (max-width: 980px){
-  .calBody{ grid-template-columns: 1fr minmax(240px, 280px); }
+  .calBody{ grid-template-columns: 1fr minmax(240px, 320px); }
 }
 
 @media (max-width: 560px){
@@ -225,8 +238,6 @@ body{
   .calBody{ grid-template-columns: 1fr; grid-template-rows: auto auto; }
   .dayPanel{ border-radius: 14px; max-height: 36dvh; }
   .cell{ padding: 8px; border-radius: 14px; }
-  .lunar{ display:none; }
-  .badge .n{ display:none; } /* ✅ 移动端格子只显示“班/休” */
 }
 
 @media (prefers-reduced-motion: reduce){
