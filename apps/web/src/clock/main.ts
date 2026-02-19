@@ -12,57 +12,44 @@ type Profile = {
 
 const model = new ClockModel();
 
-// 当前生效的时区：先用浏览器时区兜底，避免 profile 未返回时显示“本机 UTC/偏移”
-let tz: string =
-  Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-
-// formatter 会随 tz 更新
-let timeFmt = new Intl.DateTimeFormat("en-GB", {
-  timeZone: tz,
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-  hour12: false,
-});
-
-let dateFmt = new Intl.DateTimeFormat("sv-SE", {
-  timeZone: tz,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-function applyTZ(newTZ?: string) {
-  const next = (newTZ || "").trim();
-  if (!next || next === tz) return;
-  tz = next;
-
-  timeFmt = new Intl.DateTimeFormat("en-GB", {
+// 使用 Intl.DateTimeFormat + timeZone 格式化（你要求的方式）
+function fmtTimeHmsInTZ(d: Date, tz: string) {
+  return new Intl.DateTimeFormat("en-GB", {
     timeZone: tz,
+    hour12: false,
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
+  }).format(d);
+}
+function fmtTimeHmInTZ(d: Date, tz: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: tz,
     hour12: false,
-  });
-
-  dateFmt = new Intl.DateTimeFormat("sv-SE", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+}
+function fmtDateInTZ(d: Date, tz: string) {
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: tz,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  });
+  }).format(d);
 }
+
+let tzForClock = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
 async function initProfile() {
   try {
     const p = await fetchJson<Profile>("/api/profile", undefined, 6000);
 
     if (p?.timezone) {
-      applyTZ(p.timezone);
+      tzForClock = p.timezone;
       setTextSafe($id("tzText"), p.timezone);
     }
 
-    // 位置展示尽量轻：存在就显示，不存在就空
     const parts = [p.ip_country_en, p.ip_region_en, p.ip_city_en].filter(Boolean);
     if (parts.length) setTextSafe($id("locText"), parts.join(" / "));
   } catch {
@@ -74,29 +61,44 @@ async function initSync() {
   try {
     const s = await syncOnce("/api/now", 3);
     model.applySync(s, true);
-    // 可选：只在控制台给你看
-    // console.info("[sync] ok rtt=", s.rttMs.toFixed(1), "ms");
   } catch {
-    // sync 失败也不影响本地走时
+    // ignore
   }
 }
 
 function startClock() {
   const timeEl = $id("bigTime");
   const dateEl = $id("bigDate");
+  const srEl = document.getElementById("srTime");
 
-  let lastShown = "";
+  let lastHms = "";
+  let lastDate = "";
+  let lastSpokenHm = "";
 
   const tick = () => {
     const nowMs = model.now();
     const d = new Date(nowMs);
 
-    // 用 Intl 按 tz 格式化
-    const t = timeFmt.format(d);
-    if (t !== lastShown) {
-      lastShown = t;
-      setTextSafe(timeEl, t);
-      setTextSafe(dateEl, dateFmt.format(d)); // sv-SE 输出天然是 YYYY-MM-DD
+    // 视觉：每秒显示
+    const hms = fmtTimeHmsInTZ(d, tzForClock);
+    if (hms !== lastHms) {
+      lastHms = hms;
+      setTextSafe(timeEl, hms);
+    }
+
+    const dateStr = fmtDateInTZ(d, tzForClock);
+    if (dateStr !== lastDate) {
+      lastDate = dateStr;
+      setTextSafe(dateEl, dateStr);
+    }
+
+    // 读屏：每分钟播报一次（避免每秒朗读）
+    if (srEl) {
+      const hm = fmtTimeHmInTZ(d, tzForClock);
+      if (hm !== lastSpokenHm) {
+        lastSpokenHm = hm;
+        srEl.textContent = `当前时间：${hm}`;
+      }
     }
 
     requestAnimationFrame(tick);
@@ -106,9 +108,9 @@ function startClock() {
 }
 
 (async () => {
-  // 先让时钟跑起来（避免页面“卡死感”）
+  // 先跑起来，避免页面“卡死感”
   startClock();
 
-  // 并行做 profile + sync，任何失败都不阻塞 UI
+  // 并行：任何失败不阻塞 UI
   await Promise.allSettled([initProfile(), initSync()]);
 })();
