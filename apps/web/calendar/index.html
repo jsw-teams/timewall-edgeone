@@ -19,19 +19,18 @@
 
     <a class="iconbtn" href="/" aria-label="返回时钟" title="返回时钟">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-        <path fill="currentColor" d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 .001-16.001A8 8 0 0 1 12 20Zm.75-13a1 1 0 0 0-2 0v5c0 .265.105.52.293.707l3 3a1 1 0 1 0 1.414-1.414l-2.707-2.707V7Z"/>
+        <path fill="currentColor" d="M15.5 5.5a1 1 0 0 1 0 1.4L11.4 11l4.1 4.1a1 1 0 1 1-1.4 1.4l-4.8-4.8a1 1 0 0 1 0-1.4l4.8-4.8a1 1 0 0 1 1.4 0Z"/>
       </svg>
     </a>
   </header>
 
   <main id="main" class="stage" role="main" aria-label="日历页面">
-    <!-- 头部控制条（全宽） -->
     <section class="calHead" aria-label="月份与导航">
       <button id="prevBtn" class="btn icon" type="button" aria-label="上个月">‹</button>
 
       <div class="titleblock">
         <h1 id="monthTitle" class="monthTitle">0000年00月</h1>
-        <div id="sourceLine" class="sourceLine"></div>
+        <div id="sourceLine" class="sourceLine">地区：--</div>
       </div>
 
       <div class="headactions">
@@ -40,7 +39,6 @@
       </div>
     </section>
 
-    <!-- 日历网格（全宽，尽量一屏） -->
     <section class="calBody" aria-label="日历主体">
       <div id="grid"
            class="grid"
@@ -48,12 +46,73 @@
            aria-labelledby="monthTitle"
            aria-describedby="sourceLine"
            aria-label="月份日历">
+
+        <!-- 周标题（静态骨架） -->
+        <div class="headcell" role="columnheader">一</div>
+        <div class="headcell" role="columnheader">二</div>
+        <div class="headcell" role="columnheader">三</div>
+        <div class="headcell" role="columnheader">四</div>
+        <div class="headcell" role="columnheader">五</div>
+        <div class="headcell" role="columnheader">六</div>
+        <div class="headcell" role="columnheader">日</div>
+
+        <!-- 42 个日期格骨架：JS 会填 data-key、日期数字、农历、班休 -->
+        <!-- 用 button 方便键盘无障碍；初始禁用防止误触 -->
+        <!-- 下面这段 42 个完全一致，你可以直接复制粘贴 -->
+        <!-- row 1 -->
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <!-- row 2 -->
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <!-- row 3 -->
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <!-- row 4 -->
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <!-- row 5 -->
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <!-- row 6 -->
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+        <button class="cell skel" type="button" disabled><div class="dayNum">&nbsp;</div><div class="subline"><span class="ghost"></span><span class="ghost"></span></div></button>
+
       </div>
 
-      <!-- 详情区：桌面右侧/底部自适应；移动端在下方 -->
       <section class="dayPanel" aria-live="polite" aria-atomic="true">
         <div id="dayTitle" class="dayTitle">选择一个日期</div>
-        <div id="dayBody" class="dayBody"></div>
+        <div id="dayBody" class="dayBody">农历：—&#10;班休：—</div>
       </section>
     </section>
   </main>
