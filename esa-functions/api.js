@@ -1,10 +1,7 @@
 // esa-functions/api.js
-// 说明：
-// 1) 将 ESA 路由绑定到 /api/*
-// 2) 保持原前端接口不变：
-//    - /api/now
-//    - /api/profile
-// 3) 同时导出 onRequest / onRequestGet，尽量兼容不同运行时的调用习惯
+// 适用：ESA Functions and Pages
+// 路由建议：time.jsw.ac.cn/api/*  -> 绑定到这个函数
+// 说明：不要开启 bypass（这是直接返回 JSON 的 API）
 
 function pickString(...vals) {
   for (const v of vals) {
@@ -56,25 +53,21 @@ function guessCountryFromTZ(tz) {
 }
 
 function readCloudflare(request) {
-  const cf = (request && request.cf) || {};
+  const cf = request && request.cf ? request.cf : {};
 
   const country = normCountry(
     cf.country,
     getHeader(request, "cf-ipcountry")
   );
 
-  const timezone = pickString(
-    cf.timezone
-  );
+  const timezone = pickString(cf.timezone);
 
   return { country, timezone };
 }
 
-function readESA(request, context) {
-  // 有些环境挂在 request.info，有些可能挂在 context.info
-  const reqInfo = (request && request.info) || {};
-  const ctxInfo = (context && context.info) || {};
-  const info = Object.assign({}, ctxInfo, reqInfo);
+function readESA(request) {
+  // ESA 可能把地理信息挂在 request.info
+  const info = request && request.info ? request.info : {};
 
   const country = normCountry(
     info.ip_country_id,
@@ -101,13 +94,12 @@ function readESA(request, context) {
   return { country, timezone };
 }
 
-function json(data, status = 200, extraHeaders = {}) {
+function json(data, status) {
   return new Response(JSON.stringify(data), {
-    status,
+    status: status || 200,
     headers: {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
-      ...extraHeaders,
     },
   });
 }
@@ -118,19 +110,14 @@ function normalizePath(pathname) {
   return p || "/";
 }
 
-async function handle(context) {
-  const request = context && context.request ? context.request : context;
-
-  if (!request || !request.url) {
-    return json({ error: "bad_request" }, 400);
-  }
-
+async function handleRequest(request) {
   const method = String(request.method || "GET").toUpperCase();
+
   if (method !== "GET" && method !== "HEAD") {
     return new Response(null, {
       status: 405,
       headers: {
-        allow: "GET, HEAD",
+        "allow": "GET, HEAD",
         "cache-control": "no-store",
       },
     });
@@ -140,29 +127,22 @@ async function handle(context) {
   const path = normalizePath(url.pathname);
 
   // /api/now
-  if (path === "/api/now" || path.endsWith("/api/now")) {
+  if (path === "/api/now") {
     return json({
       server_epoch_ms: Date.now(),
     });
   }
 
   // /api/profile
-  if (path === "/api/profile" || path.endsWith("/api/profile")) {
+  if (path === "/api/profile") {
     const fromCF = readCloudflare(request);
-    const fromESA = readESA(request, context);
+    const fromESA = readESA(request);
 
     let timezone = pickString(fromCF.timezone, fromESA.timezone);
-    let country =
-      normCountry(fromCF.country) ||
-      normCountry(fromESA.country);
+    let country = normCountry(fromCF.country, fromESA.country);
 
-    if (!timezone) {
-      timezone = "UTC";
-    }
-
-    if (!country) {
-      country = guessCountryFromTZ(timezone) || "ZZ";
-    }
+    if (!timezone) timezone = "UTC";
+    if (!country) country = guessCountryFromTZ(timezone) || "ZZ";
 
     return json({
       country,
@@ -170,8 +150,8 @@ async function handle(context) {
     });
   }
 
-  // 访问 /api 时，给一个简单索引，方便排查
-  if (path === "/api" || path.endsWith("/api")) {
+  // /api
+  if (path === "/api") {
     return json({
       ok: true,
       endpoints: ["/api/now", "/api/profile"],
@@ -187,10 +167,8 @@ async function handle(context) {
   );
 }
 
-export async function onRequest(context) {
-  return handle(context);
-}
-
-export async function onRequestGet(context) {
-  return handle(context);
-}
+export default {
+  async fetch(request) {
+    return handleRequest(request);
+  },
+};
